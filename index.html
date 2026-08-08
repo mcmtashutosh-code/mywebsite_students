@@ -3,245 +3,318 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>Vidhyapath — Admin Panel</title>
+<title>Vidhyapath — Your Path to Success</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <style>
 :root{
   --bg:#0a1220; --bg-2:#0d1a2b; --panel:#101f33; --line:#1e3552; --line-soft:#152943;
-  --stamp:#a8382f; --seal:#1f7a5c; --gold:#c9a227;
+  --paper:#f4ecd8; --paper-2:#ece1c8; --ink:#22314a; --ink-dim:#5a6b85;
+  --stamp:#a8382f; --stamp-dark:#7e2620; --seal:#1f7a5c; --gold:#c9a227;
   --text:#e9eef6; --text-dim:#93a7c4; --text-mute:#5c7291;
   --radius:16px; --radius-sm:10px;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
-body{background:radial-gradient(circle at 12% -8%, #12314f 0%, transparent 42%), radial-gradient(circle at 100% 6%, #0f2438 0%, transparent 38%), var(--bg);
-  min-height:100vh; font-family:'Inter',system-ui,sans-serif; color:var(--text);}
-h1,h2,h3,.serif{font-family:'Fraunces',serif;}
-.wrap{max-width:1000px; margin:0 auto; padding:0 18px 60px;}
-input,select,textarea{width:100%; background:var(--bg-2); color:var(--text); border:1px solid var(--line-soft); border-radius:9px; padding:11px 13px; font-size:14px; font-family:inherit; outline:none;}
+html{background:#0a1220;}
+body{
+  background:
+    radial-gradient(circle at 12% -8%, #12314f 0%, transparent 42%),
+    radial-gradient(circle at 100% 6%, #0f2438 0%, transparent 38%),
+    var(--bg);
+  font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif;
+  color:var(--text); -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.serif{font-family:'Fraunces','Noto Sans Devanagari',serif;}
+a{color:inherit;}
+.wrap{max-width:1080px; margin:0 auto; padding:0 18px 40px;}
+img{max-width:100%;}
+
+/* ---------- Top strip / Nav ---------- */
+.topstrip{height:3px; background:linear-gradient(90deg,var(--seal),var(--gold),var(--seal)); background-size:200% 100%; animation:flow 6s linear infinite;}
+@keyframes flow{0%{background-position:0 0;}100%{background-position:200% 0;}}
+@media (prefers-reduced-motion:reduce){.topstrip{animation:none;}}
+
+.navbar{position:sticky; top:0; z-index:50; background:rgba(10,18,32,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-soft);}
+.navbar-inner{max-width:1080px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; gap:14px;}
+.brand{display:flex; align-items:center; gap:10px; cursor:pointer;}
+.brand-seal{width:36px; height:36px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--seal), #0e4632); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:16px; color:#e8f7ef; border:1.5px solid #2fa578;}
+.brand-name{font-size:19px; font-weight:600; letter-spacing:.01em;}
+.brand-name b{color:var(--gold); font-weight:700;}
+
+.pillnav{display:flex; gap:4px; background:var(--panel); border:1px solid var(--line-soft); border-radius:999px; padding:4px; overflow-x:auto; scrollbar-width:none;}
+.pillnav::-webkit-scrollbar{display:none;}
+.pillnav button{border:none; background:none; color:var(--text-dim); font-family:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:999px; cursor:pointer; white-space:nowrap;}
+.pillnav button.active{background:var(--seal); color:#eafff4;}
+.nav-right{display:flex; align-items:center; gap:8px;}
+.icon-btn{position:relative; background:var(--panel); border:1px solid var(--line-soft); color:var(--text-dim); width:38px; height:38px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px;}
+.icon-btn:hover{border-color:var(--seal);}
+.badge-dot{position:absolute; top:-4px; right:-4px; background:var(--stamp); color:#fff; font-size:10px; font-weight:700; min-width:16px; height:16px; border-radius:8px; display:flex; align-items:center; justify-content:center; padding:0 3px;}
+.btn-login{background:var(--seal); color:#eafff4; border:none; border-radius:10px; padding:9px 16px; font-weight:600; font-size:13px; cursor:pointer; font-family:inherit;}
+
+/* mobile nav collapse */
+@media (max-width:760px){
+  .navbar-inner{flex-wrap:wrap;}
+  .pillnav{order:3; width:100%;}
+}
+
+/* ---------- Hero: Admit Card / Ledger stub ---------- */
+.hero{padding:44px 0 30px;}
+.admit-card{background:linear-gradient(180deg,var(--paper),var(--paper-2)); color:var(--ink); border-radius:20px; padding:0; overflow:hidden; box-shadow:0 20px 50px -20px rgba(0,0,0,.6); position:relative; display:flex; flex-wrap:wrap;}
+.admit-main{flex:1 1 340px; padding:32px 34px 30px; position:relative;}
+.admit-eyebrow{font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--stamp);}
+.admit-eyebrow-hi{font-family:'Noto Sans Devanagari',sans-serif; font-size:13px; font-weight:600; color:var(--ink-dim); margin-top:3px;}
+.admit-title{font-size:clamp(28px,4.4vw,42px); font-weight:700; line-height:1.08; margin:10px 0 12px;}
+.admit-sub{font-size:15px; color:var(--ink-dim); max-width:460px; line-height:1.6; margin:0 0 24px;}
+.admit-cta{display:flex; gap:12px; flex-wrap:wrap;}
+.btn-stamp{background:var(--stamp); color:#fff5f2; border:none; padding:13px 24px; border-radius:10px; font-weight:700; font-size:14.5px; cursor:pointer; font-family:inherit; box-shadow:0 8px 18px -8px rgba(168,56,47,.6);}
+.btn-outline-ink{background:transparent; color:var(--ink); border:1.5px solid var(--ink); padding:12px 22px; border-radius:10px; font-weight:600; font-size:14.5px; cursor:pointer; font-family:inherit;}
+.admit-stub{flex:0 0 240px; border-left:2px dashed #c7bb9c; padding:28px 26px; display:flex; flex-direction:column; justify-content:center; gap:10px; position:relative; background:rgba(255,255,255,.25);}
+.stub-row{display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-dim); border-bottom:1px dotted #c7bb9c; padding-bottom:6px;}
+.stub-row b{color:var(--ink); font-size:12.5px;}
+.seal-stamp{position:absolute; right:18px; bottom:16px; width:78px; height:78px; border-radius:50%; border:2.5px solid var(--seal); color:var(--seal); display:flex; align-items:center; justify-content:center; text-align:center; font-family:'Fraunces',serif; font-weight:700; font-size:10px; line-height:1.2; transform:rotate(-14deg); opacity:.75;}
+@media (max-width:600px){.seal-stamp{display:none;}}
+
+/* ---------- Sections ---------- */
+.section{padding:12px 0 0;}
+.section-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; gap:12px; flex-wrap:wrap;}
+.section-title{font-size:24px; font-weight:600; margin:0;}
+.section-title .no{color:var(--gold); font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-right:8px;}
+.section-sub{font-size:13px; color:var(--text-mute); margin:2px 0 0;}
+.see-all{font-size:12.5px; font-weight:600; color:var(--text-dim); background:none; border:1px solid var(--line-soft); border-radius:8px; padding:8px 13px; cursor:pointer; font-family:inherit;}
+.see-all:hover{border-color:var(--seal); color:var(--seal);}
+
+.card-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px;}
+.quick-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:20px; cursor:pointer; transition:border-color .15s;}
+.quick-card:hover{border-color:var(--seal);}
+.quick-card .qi{width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:12px;}
+.quick-card h3{font-size:15.5px; margin:0 0 4px; font-family:'Inter'; font-weight:600;}
+.quick-card p{font-size:12.5px; color:var(--text-mute); margin:0; line-height:1.5;}
+
+/* ---------- Filter chips ---------- */
+.chiprow{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px;}
+.chip{padding:8px 14px; border-radius:999px; font-size:12.5px; font-weight:600; cursor:pointer; border:1px solid var(--line-soft); color:var(--text-dim); background:var(--panel); font-family:inherit;}
+.chip.sel{background:var(--seal); color:#eafff4; border-color:var(--seal);}
+
+/* ---------- Notice ---------- */
+.notice-strip{display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; margin-bottom:6px;}
+.notice-card{flex:0 0 280px; background:var(--panel); border:1px solid var(--line-soft); border-left:4px solid var(--seal); border-radius:12px; padding:14px 16px; cursor:pointer;}
+.notice-card.pr-urgent{border-left-color:var(--stamp);}
+.notice-card.pr-important{border-left-color:var(--gold);}
+.notice-card .ntag{font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-mute); display:flex; justify-content:space-between; margin-bottom:6px;}
+.notice-card .ntitle{font-size:14px; font-weight:600; margin:0 0 4px;}
+.notice-card .nmsg{font-size:12px; color:var(--text-dim); line-height:1.5; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.unread-dot{width:7px; height:7px; border-radius:50%; background:var(--stamp); display:inline-block; margin-right:5px;}
+
+/* ---------- List item cards (notes/jobs/video) ---------- */
+.item-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:16px 18px; margin-bottom:12px; display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;}
+.item-icon{width:44px; height:44px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:19px; flex:none;}
+.item-body{flex:1; min-width:180px;}
+.item-title{font-size:15px; font-weight:600; margin:0 0 4px;}
+.item-meta{font-size:11.5px; color:var(--text-mute); display:flex; gap:10px; flex-wrap:wrap; margin-bottom:6px;}
+.item-meta span{background:var(--bg-2); padding:3px 9px; border-radius:6px;}
+.item-desc{font-size:12.5px; color:var(--text-dim); line-height:1.55; margin:0;}
+.item-actions{display:flex; gap:8px; flex:none; align-self:center;}
+.btn-sm{border:none; border-radius:8px; padding:9px 15px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;}
+.btn-primary-sm{background:var(--seal); color:#eafff4;}
+.btn-ghost-sm{background:var(--bg-2); color:var(--text-dim); border:1px solid var(--line-soft);}
+.pill-tag{font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.04em;}
+.tag-live{background:var(--stamp); color:#fff;}
+.tag-upcoming{background:var(--gold); color:#241d02;}
+.tag-past{background:#2c3e50; color:var(--text-dim);}
+.empty-note{text-align:center; padding:12px 20px; color:var(--text-mute); font-size:13.5px;}
+.job-details{margin-top:12px; padding-top:12px; border-top:1px dashed var(--line-soft); display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:6px 20px;}
+.job-detail-row{display:flex; justify-content:space-between; gap:10px; font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--bg-2);}
+.job-detail-row span{color:var(--text-mute);}
+.job-detail-row b{color:var(--text); text-align:right; font-weight:600;}
+.job-links{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid var(--line-soft);}
+
+/* ---------- Views ---------- */
+.view{display:none;}
+.view.active{display:block;}
+
+/* ---------- Reader (pdf.js) ---------- */
+.reader-fullscreen{position:fixed; inset:0; z-index:80; background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch;}
+.reader-topbar{position:sticky; top:0; z-index:81; display:flex; justify-content:space-between; align-items:center; padding:14px 20px; background:rgba(10,18,32,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-soft);}
+.reader-close-btn{background:var(--panel); border:1px solid var(--line-soft); color:var(--text); font-weight:600; font-size:13px; padding:9px 16px; border-radius:9px; cursor:pointer; font-family:inherit;}
+.reader-close-btn:hover{border-color:var(--stamp); color:var(--stamp);}
+.reader-page-label{font-size:13px; color:var(--text-dim); font-weight:600;}
+.reader-jump{display:flex; align-items:center; gap:8px;}
+.reader-jump input{width:64px; background:var(--panel); border:1px solid var(--line-soft); color:var(--text); border-radius:8px; padding:8px 10px; font-size:13px; text-align:center; font-family:inherit;}
+.reader-jump input:focus{border-color:var(--seal); outline:none;}
+.reader-jump button{background:var(--panel); border:1px solid var(--line-soft); color:var(--text-dim); font-weight:600; font-size:12.5px; padding:8px 14px; border-radius:8px; cursor:pointer; font-family:inherit;}
+.reader-jump button:hover{border-color:var(--seal); color:var(--seal);}
+@media (max-width:520px){.reader-jump input{width:48px;}}
+.reader-side-btn{position:fixed; top:50%; transform:translateY(-50%); width:52px; height:52px; border-radius:50%; background:var(--panel); border:1px solid var(--line-soft); color:var(--text); font-size:24px; cursor:pointer; z-index:82; display:flex; align-items:center; justify-content:center; font-family:inherit;}
+.reader-side-btn.left{left:18px;}
+.reader-side-btn.right{right:18px;}
+.reader-side-btn:hover{border-color:var(--seal); color:var(--seal);}
+.reader-side-btn:disabled{opacity:.25; cursor:default;}
+.reader-canvas-scroll{display:flex; justify-content:center; padding:28px 90px 60px;}
+@media (max-width:700px){.reader-canvas-scroll{padding:20px 56px 50px;} .reader-side-btn{width:42px; height:42px; font-size:19px;} .reader-side-btn.left{left:8px;} .reader-side-btn.right{right:8px;}}
+#pdfCanvas{max-width:100%; border-radius:8px; display:block; box-shadow:0 8px 30px rgba(0,0,0,.5);}
+.reader-guard{position:relative;}
+.reader-guard::after{content:"VIDHYAPATH — READ ONLY"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; color:rgba(255,255,255,.05); pointer-events:none; transform:rotate(-18deg);}
+
+/* ---------- Auth Modal ---------- */
+.modal-overlay{display:none; position:fixed; inset:0; background:rgba(5,10,20,.7); backdrop-filter:blur(3px); z-index:100; align-items:center; justify-content:center; padding:16px;}
+.modal-overlay.active{display:flex;}
+.modal-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:20px; padding:28px 26px; width:100%; max-width:400px; max-height:90vh; overflow-y:auto; position:relative;}
+.modal-card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--seal); border-radius:20px 0 0 20px;}
+.modal-close{position:absolute; right:14px; top:14px; background:none; border:none; color:var(--text-mute); font-size:20px; cursor:pointer;}
+.modal-head{text-align:center; margin-bottom:18px;}
+.modal-head h2{font-size:20px; margin:8px 0 4px;}
+.modal-head p{font-size:12.5px; color:var(--text-mute); margin:0;}
+.field-label{display:block; font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim); margin:14px 0 6px;}
+input,select,textarea{width:100%; background:var(--bg-2); color:var(--text); border:1px solid var(--line-soft); border-radius:9px; padding:12px 13px; font-size:14.5px; font-family:inherit; outline:none;}
 input:focus,select:focus,textarea:focus{border-color:var(--seal);}
-label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim); margin:14px 0 6px;}
-.btn{border:none; border-radius:9px; padding:12px 18px; font-weight:700; font-size:13.5px; cursor:pointer; font-family:inherit;}
-.btn-primary{background:var(--seal); color:#eafff4;}
-.btn-danger{background:var(--stamp); color:#fff;}
+.btn-full{width:100%; background:var(--seal); color:#eafff4; border:none; border-radius:9px; padding:13px; font-weight:700; font-size:14.5px; cursor:pointer; font-family:inherit; margin-top:18px;}
+.btn-full:disabled{opacity:.55;}
+.switch-line{text-align:center; font-size:12.5px; color:var(--text-mute); margin-top:14px;}
+.switch-line b{color:var(--seal); cursor:pointer;}
 .pw-wrap{position:relative;}
 .pw-wrap input{padding-right:44px;}
 .pw-toggle{position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-mute); cursor:pointer; font-size:16px; padding:4px; line-height:1;}
 .pw-toggle:hover{color:var(--seal);}
-.btn-ghost{background:var(--bg-2); color:var(--text-dim); border:1px solid var(--line-soft);}
-.btn:disabled{opacity:.5;}
-.btn-full{width:100%;}
 .error-text{color:var(--stamp); font-size:12.5px; margin-top:8px; min-height:14px;}
+.auth-tabs{display:flex; background:var(--bg-2); border-radius:10px; padding:3px; margin-bottom:6px;}
+.auth-tabs button{flex:1; background:none; border:none; color:var(--text-dim); font-weight:600; font-size:13px; padding:9px; border-radius:8px; cursor:pointer; font-family:inherit;}
+.auth-tabs button.active{background:var(--seal); color:#eafff4;}
 
-.topstrip{height:3px; background:linear-gradient(90deg,var(--seal),var(--gold),var(--seal)); background-size:200% 100%; animation:flow 6s linear infinite;}
-@keyframes flow{0%{background-position:0 0;}100%{background-position:200% 0;}}
-
-.navbar{position:sticky; top:0; z-index:50; background:rgba(10,18,32,.94); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-soft);}
-.navbar-inner{max-width:1000px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; gap:12px; flex-wrap:wrap;}
-.brand{display:flex; align-items:center; gap:10px;}
-.brand-seal{width:34px; height:34px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--seal), #0e4632); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; border:1.5px solid #2fa578;}
-.brand-name{font-size:17px; font-weight:600;}
-.brand-name b{color:var(--gold);}
-.brand-name .tag{font-size:10px; color:var(--text-mute); font-weight:600; letter-spacing:.06em; margin-left:6px; background:var(--panel); padding:3px 8px; border-radius:6px;}
-.pillnav{display:flex; gap:4px; background:var(--panel); border:1px solid var(--line-soft); border-radius:999px; padding:4px; overflow-x:auto;}
-.pillnav button{border:none; background:none; color:var(--text-dim); font-family:inherit; font-weight:600; font-size:12.5px; padding:8px 14px; border-radius:999px; cursor:pointer; white-space:nowrap;}
-.pillnav button.active{background:var(--seal); color:#eafff4;}
-
-.login-wrap{max-width:400px; margin:80px auto; background:var(--panel); border:1px solid var(--line-soft); border-radius:20px; padding:32px 28px; position:relative;}
-.login-wrap::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--stamp); border-radius:20px 0 0 20px;}
-.login-head{text-align:center; margin-bottom:20px;}
-
-.section{padding:28px 0 8px;}
-.section-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; gap:10px; flex-wrap:wrap;}
-.section-title{font-size:21px; font-weight:600; margin:0;}
-
-.stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:8px;}
-.stat-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:14px; padding:18px;}
-.stat-card .num{font-size:26px; font-weight:700; font-family:'Fraunces',serif;}
-.stat-card .lbl{font-size:11.5px; color:var(--text-mute); margin-top:4px;}
-
-.panel-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:22px;}
-.form-row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
-@media (max-width:560px){.form-row2{grid-template-columns:1fr;}}
-
-.list-item{background:var(--bg-2); border:1px solid var(--line-soft); border-radius:12px; padding:14px 16px; margin-bottom:10px; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;}
-.list-item .li-title{font-size:14.5px; font-weight:600; margin:0 0 4px;}
-.list-item .li-meta{font-size:11.5px; color:var(--text-mute); display:flex; gap:8px; flex-wrap:wrap;}
-.li-meta span{background:var(--panel); padding:2px 8px; border-radius:6px;}
-.li-actions{display:flex; gap:6px; flex:none;}
-.btn-xs{padding:7px 12px; font-size:11.5px; border-radius:7px;}
-.empty-note{text-align:center; padding:30px; color:var(--text-mute); font-size:13px;}
-.view{display:none;} .view.active{display:block;}
 .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#101f33; border:1px solid var(--line-soft); color:var(--text); padding:12px 20px; border-radius:10px; font-size:13.5px; z-index:200; opacity:0; pointer-events:none; transition:opacity .25s;}
 .toast.show{opacity:1;}
-.tab-toggle{display:flex; gap:6px; margin-bottom:14px;}
-.tab-toggle button{flex:1; background:var(--bg-2); border:1px solid var(--line-soft); color:var(--text-dim); font-weight:600; font-size:12.5px; padding:9px; border-radius:8px; cursor:pointer; font-family:inherit;}
-.tab-toggle button.active{background:var(--seal); color:#eafff4; border-color:var(--seal);}
-.ext-link-btn{display:inline-block; margin-top:10px; font-size:12px; color:var(--text-dim);}
-.upload-hint{font-size:11px; color:var(--text-mute); margin:4px 0 14px;}
-.custom-field-row{display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-bottom:8px; align-items:center;}
-.custom-field-row input{font-size:13px;}
-.custom-field-row button{background:var(--stamp); color:#fff; border:none; border-radius:8px; width:36px; height:38px; cursor:pointer; font-size:15px;}
-@media (max-width:560px){.custom-field-row{grid-template-columns:1fr;}}
+
+footer{text-align:center; padding:24px 18px; color:var(--text-mute); font-size:12px; border-top:1px solid var(--line-soft); margin-top:30px;}
+footer b{color:var(--gold);}
 </style>
 </head>
-<body>
+<body oncontextmenu="return false;" onkeydown="if((event.ctrlKey||event.metaKey)&&['p','s','u','c'].includes(event.key.toLowerCase())){event.preventDefault();}">
 <div class="topstrip"></div>
 
-<div class="navbar" id="navbar" style="display:none;">
+<div class="navbar">
   <div class="navbar-inner">
-    <div class="brand">
+    <div class="brand" onclick="showView('home')">
       <div class="brand-seal">वि</div>
-      <div class="brand-name"><b>Vidhya</b>path <span class="tag">ADMIN</span></div>
+      <div class="brand-name"><b>Vidhya</b>path</div>
     </div>
-    <div class="pillnav">
-      <button data-v="dash" class="active" onclick="showView('dash')">Dashboard</button>
-      <button data-v="notices" onclick="showView('notices')">Notices</button>
-      <button data-v="videos" onclick="showView('videos')">Live Classes</button>
-      <button data-v="testctrl" onclick="showView('testctrl')">Test Control</button>
-      <button data-v="jobs" onclick="showView('jobs')">Jobs</button>
+    <div class="pillnav" id="pillnav">
+      <button data-v="home" class="active" onclick="showView('home')">Home</button>
       <button data-v="notes" onclick="showView('notes')">Notes</button>
-      <button data-v="students" onclick="showView('students')">Students</button>
-      <button data-v="settings" onclick="showView('settings')">Settings</button>
+      <button data-v="test" onclick="showView('test')">Test</button>
+      <button data-v="jobs" onclick="showView('jobs')">Jobs</button>
+      <button data-v="live" onclick="showView('live')">Live Classes</button>
+      <button data-v="about" onclick="showView('about')">About</button>
+    </div>
+    <div class="nav-right">
+      <button class="icon-btn" onclick="showView('notice')" title="Notices">🔔<span class="badge-dot" id="noticeBadge" style="display:none;">0</span></button>
+      <button class="btn-login" id="authAreaBtn" onclick="onAuthAreaClick()">Login</button>
     </div>
   </div>
 </div>
 
-<!-- ================= LOGIN ================= -->
-<div class="login-wrap" id="loginWrap">
-  <div class="login-head">
-    <div class="brand-seal" style="margin:0 auto;">वि</div>
-    <h2 id="loginHeading">Admin Login</h2>
-    <p style="color:var(--text-mute); font-size:13px;" id="loginSubText">Authorized Personnel Only</p>
-  </div>
+<div class="wrap">
 
-  <div class="tab-toggle">
-    <button id="loginTabBtn" class="active" onclick="setLoginTab('login')">Login</button>
-    <button id="registerTabBtn" onclick="setLoginTab('register')">Create Admin Account</button>
-  </div>
-
-  <div id="adminLoginBox">
-    <label class="field-label">Email</label>
-    <input type="email" id="adminEmail" placeholder="admin@email.com">
-    <label class="field-label">Password</label>
-    <div class="pw-wrap"><input type="password" id="adminPassword" placeholder="••••••••"><button type="button" class="pw-toggle" onclick="togglePw('adminPassword',this)">👁</button></div>
-    <div class="error-text" id="loginError"></div>
-    <button class="btn btn-primary btn-full" id="loginBtn" style="margin-top:14px;" onclick="doAdminLogin()">Login</button>
-  </div>
-
-  <div id="adminRegisterBox" style="display:none;">
-    <label class="field-label">Secret Admin Code</label>
-    <div class="pw-wrap"><input type="password" id="regSecret" placeholder="Setup secret code"><button type="button" class="pw-toggle" onclick="togglePw('regSecret',this)">👁</button></div>
-    <label class="field-label">Full Name</label>
-    <input type="text" id="regName" placeholder="Aapka naam">
-    <label class="field-label">Email</label>
-    <input type="email" id="regEmail" placeholder="admin@email.com">
-    <label class="field-label">Password</label>
-    <div class="pw-wrap"><input type="password" id="regPassword" placeholder="At least 6 characters"><button type="button" class="pw-toggle" onclick="togglePw('regPassword',this)">👁</button></div>
-    <div class="error-text" id="registerError"></div>
-    <button class="btn btn-primary btn-full" id="registerBtn" style="margin-top:14px;" onclick="doAdminRegister()">Admin Account Banayein</button>
-  </div>
-</div>
-
-<div class="wrap" id="appWrap" style="display:none;">
-
-  <!-- ================= DASHBOARD ================= -->
-  <div class="view active" id="view-dash">
-    <div class="section">
-      <div class="section-head"><span class="section-title">Dashboard</span><button class="btn btn-danger btn-xs" onclick="doAdminLogout()">Logout</button></div>
-      <div class="stat-grid">
-        <div class="stat-card"><div class="num" id="statNotices">–</div><div class="lbl">Active Notices</div></div>
-        <div class="stat-card"><div class="num" id="statVideos">–</div><div class="lbl">Live Class Links</div></div>
-        <div class="stat-card"><div class="num" id="statJobs">–</div><div class="lbl">Active Jobs</div></div>
-        <div class="stat-card"><div class="num" id="statNotes">–</div><div class="lbl">Notes Uploaded</div></div>
+  <!-- ================= HOME ================= -->
+  <div class="view active" id="view-home">
+    <div class="hero">
+      <div class="admit-card">
+        <div class="admit-main">
+          <div class="admit-eyebrow">Your Path to Success</div>
+          <div class="admit-eyebrow-hi">अपनी मंज़िल का रास्ता</div>
+          <h1 class="admit-title">Complete Preparation for Government Jobs & Board Exams — All in One Platform.</h1>
+          <p class="admit-sub">Study Notes, Mock Tests, Live Classes, and Job Updates — everything in one place, organized for focused preparation. Build disciplined study habits with Vidhyapath.</p>
+          <div class="admit-cta">
+            <button class="btn-stamp" onclick="showView('notes')">Explore Study Material →</button>
+            <button class="btn-outline-ink" onclick="showView('test')">Start Mock Test</button>
+          </div>
+        </div>
+        <div class="admit-stub">
+          <div class="stub-row"><span>Institution</span><b>Vidhyapath</b></div>
+          <div class="stub-row"><span>Coverage</span><b>All Major Exams</b></div>
+          <div class="stub-row"><span>Status</span><b style="color:var(--seal);">● Active</b></div>
+          <div class="stub-row" style="border-bottom:none;"><span>Access</span><b>24×7</b></div>
+          <div class="seal-stamp">VIDHYA<br>PATH<br>VERIFIED</div>
+        </div>
       </div>
-      <div class="panel-card" style="margin-top:16px;">
-        <p style="margin:0 0 6px; font-size:13.5px; color:var(--text-dim);">The CBT Exam System has its own dedicated admin panel (for questions, results, and live sessions). This Vidhyapath panel manages only Notices, Live Classes, Jobs, and Notes.</p>
-        <a class="ext-link-btn" href="https://mcmtashutosh-code.github.io/cbt-web-admin/" target="_blank">Open CBT Admin Panel →</a>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div><span class="section-title"><span class="no">NOTICE</span>Latest Notices</span></div>
+        <button class="see-all" onclick="showView('notice')">View All</button>
+      </div>
+      <div class="notice-strip" id="homeNoticeStrip"><div class="empty-note">Loading…</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="section-title"><span class="no">REACH</span>Our Reach</span></div>
+      <div class="card-grid" id="reachStats">
+        <div class="quick-card" style="cursor:default;"><div class="qi" style="background:#16324a; color:#6fb8e8;">👥</div><h3 style="font-family:'Fraunces',serif; font-size:24px;" id="statStudents">–</h3><p>Registered Students</p></div>
+        <div class="quick-card" style="cursor:default;"><div class="qi" style="background:#1f3a2e; color:#5dcaa5;">📘</div><h3 style="font-family:'Fraunces',serif; font-size:24px;" id="statNotesHome">–</h3><p>Study Notes Available</p></div>
+        <div class="quick-card" style="cursor:default;"><div class="qi" style="background:#3a2416; color:#e8a262;">💼</div><h3 style="font-family:'Fraunces',serif; font-size:24px;" id="statJobsHome">–</h3><p>Active Job Postings</p></div>
+        <div class="quick-card" style="cursor:default;"><div class="qi" style="background:#3a1f2a; color:#e87ba0;">🎥</div><h3 style="font-family:'Fraunces',serif; font-size:24px;" id="statLiveHome">–</h3><p>Live Class Sessions</p></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="section-title"><span class="no">01</span>Quick Access</span></div>
+      <div class="card-grid">
+        <div class="quick-card" onclick="showView('notes')"><div class="qi" style="background:#16324a; color:#6fb8e8;">📘</div><h3>Study Notes</h3><p>Academic and Competitive — subject-wise, verified notes in both categories.</p></div>
+        <div class="quick-card" onclick="showView('test')"><div class="qi" style="background:#1f3a2e; color:#5dcaa5;">📝</div><h3>Mock Tests</h3><p>Timer-based practice and live examinations on our dedicated CBT Portal.</p></div>
+        <div class="quick-card" onclick="showView('jobs')"><div class="qi" style="background:#3a2416; color:#e8a262;">💼</div><h3>Job Updates</h3><p>Latest verified vacancies from Government and Private sectors.</p></div>
+        <div class="quick-card" onclick="showView('live')"><div class="qi" style="background:#3a1f2a; color:#e87ba0;">🎥</div><h3>Live Classes</h3><p>Scheduled live lectures conducted by expert faculty.</p></div>
       </div>
     </div>
   </div>
 
-  <!-- ================= NOTICES ================= -->
-  <div class="view" id="view-notices">
+  <!-- ================= NOTES ================= -->
+  <div class="view" id="view-notes">
     <div class="section">
-      <div class="section-head"><span class="section-title">Notices Manage Karein</span></div>
-      <div class="panel-card">
-        <label class="field-label">Title</label>
-        <input type="text" id="nTitle" placeholder="Notice ka title">
-        <label class="field-label">Message</label>
-        <textarea id="nMessage" rows="3" placeholder="Notice ka poora message"></textarea>
-        <div class="form-row2">
-          <div>
-            <label class="field-label">Type / Category</label>
-            <select id="nType">
-              <option value="General">General</option>
-              <option value="Exam">Exam</option>
-              <option value="Job">Job</option>
-              <option value="Result">Result</option>
-            </select>
-          </div>
-          <div>
-            <label class="field-label">Priority</label>
-            <select id="nPriority">
-              <option value="normal">Normal</option>
-              <option value="important">Important</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
-        </div>
-        <div class="error-text" id="nError"></div>
-        <button class="btn btn-primary" style="margin-top:14px;" onclick="submitNotice()">Notice Post Karein</button>
+      <div class="section-head"><span class="section-title">Notes</span></div>
+      <div class="chiprow" id="notesCatChips">
+        <button class="chip sel" data-c="academic" onclick="setNotesCategory('academic')">Academic</button>
+        <button class="chip" data-c="competitive" onclick="setNotesCategory('competitive')">Competitive</button>
       </div>
-      <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Existing Notices</span></div>
-      <div id="noticesAdminList"><div class="empty-note">Loading…</div></div>
+      <div class="chiprow" id="notesSubFilter"></div>
+      <div id="notesList"><div class="empty-note">Loading…</div></div>
     </div>
   </div>
 
-  <!-- ================= VIDEO LINKS ================= -->
-  <div class="view" id="view-videos">
-    <div class="section">
-      <div class="section-head"><span class="section-title">Add Live Class Link</span></div>
-      <div class="panel-card">
-        <label class="field-label">Title</label>
-        <input type="text" id="vTitle" placeholder="Class title">
-        <label class="field-label">YouTube URL</label>
-        <input type="url" id="vUrl" placeholder="https://youtube.com/...">
-        <div class="form-row2">
-          <div><label class="field-label">Subject</label><input type="text" id="vSubject" placeholder="e.g. Maths, Reasoning"></div>
-          <div><label class="field-label">Exam Category</label><input type="text" id="vExamCat" placeholder="e.g. SSC, Bank"></div>
-        </div>
-        <label class="field-label">Description</label>
-        <textarea id="vDesc" rows="2" placeholder="Optional description"></textarea>
-        <div class="form-row2">
-          <div><label class="field-label">Scheduled Date/Time</label><input type="datetime-local" id="vSchedule"></div>
-          <div><label class="field-label">Status</label>
-            <select id="vIsLive"><option value="false">Scheduled / Upcoming</option><option value="true">Live Now</option></select>
-          </div>
-        </div>
-        <div class="error-text" id="vError"></div>
-        <div style="display:flex; gap:10px; margin-top:14px;">
-          <button class="btn btn-primary" onclick="submitVideo()">Add Link</button>
-          <button class="btn btn-ghost" id="videoCancelEditBtn" style="display:none;" onclick="cancelVideoEdit()">Cancel Edit</button>
+  <!-- ================= NOTES READER ================= -->
+  <div class="view" id="view-reader">
+    <div class="reader-fullscreen">
+      <div class="reader-topbar">
+        <button class="reader-close-btn" onclick="closeReader()">✕ Close</button>
+        <div class="reader-jump">
+          <input type="number" id="readerJumpInput" min="1" placeholder="Page" onkeydown="if(event.key==='Enter') jumpToReaderPage();">
+          <button onclick="jumpToReaderPage()">Go</button>
+          <span id="readerPageLabel" class="reader-page-label">1 / 1</span>
         </div>
       </div>
-      <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Existing Links</span></div>
-      <div id="videosAdminList"><div class="empty-note">Loading…</div></div>
+      <button class="reader-side-btn left" id="readerPrevBtn" onclick="changeReaderPage(-1)">‹</button>
+      <button class="reader-side-btn right" id="readerNextBtn" onclick="changeReaderPage(1)">›</button>
+      <div class="reader-canvas-scroll">
+        <div class="reader-guard">
+          <canvas id="pdfCanvas"></canvas>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- ================= TEST CONTROL (CBT admin redirect) ================= -->
-  <div class="view" id="view-testctrl">
+  <!-- ================= TEST ================= -->
+  <div class="view" id="view-test">
     <div class="section">
-      <div class="section-head"><span class="section-title">Test Control</span></div>
-      <div class="panel-card" style="text-align:center; padding:40px 24px;">
-        <div class="brand-seal" style="margin:0 auto 16px; width:44px; height:44px; font-size:18px;">📝</div>
-        <h3 style="margin:0 0 8px;">CBT Exam System</h3>
-        <p style="color:var(--text-dim); font-size:13.5px; max-width:420px; margin:0 auto 20px;">Questions, Exam Settings, Live Sessions, Results, and Registrations are all managed on the CBT's own admin panel.</p>
-        <button class="btn btn-primary" onclick="window.open('https://mcmtashutosh-code.github.io/cbt-web-admin/','_blank')">Open CBT Admin Panel →</button>
+      <div class="section-head"><span class="section-title">Test Portal</span></div>
+      <div class="admit-card" style="display:block; padding:34px;">
+        <div class="admit-eyebrow">CBT Examination Portal</div>
+        <h2 class="admit-title" style="font-size:26px;">Practice Tests and Live Examinations</h2>
+        <p class="admit-sub">Your mock tests and live examinations are conducted on Vidhyapath's dedicated CBT Portal — fully secure, timer-based, with instant results.</p>
+        <button class="btn-stamp" id="testCbtBtn" onclick="openCbtPortal()">Go to CBT Portal →</button>
+        <p id="testPlanNote" style="font-size:12px; color:var(--stamp); margin-top:12px; display:none;">CBT Test access is included in the <b>Full Access</b> plan. Please upgrade your plan to unlock this.</p>
       </div>
     </div>
   </div>
@@ -249,226 +322,199 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
   <!-- ================= JOBS ================= -->
   <div class="view" id="view-jobs">
     <div class="section">
-      <div class="section-head"><span class="section-title">Add Job Update</span></div>
-      <div class="panel-card">
-        <div class="form-row2">
-          <div><label class="field-label">Category</label>
-            <select id="jCategory"><option value="government">Government</option><option value="private">Private</option></select>
-          </div>
-          <div><label class="field-label">Type</label>
-            <select id="jSubtype"><option value="latest_job">Latest Job</option><option value="result">Result</option><option value="admit_card">Admit Card</option></select>
-          </div>
-        </div>
-        <label class="field-label">Title (Required)</label>
-        <input type="text" id="jTitle" placeholder="e.g. UPSSSC PET Online Form 2026">
-        <label class="field-label">Organization</label>
-        <input type="text" id="jOrg" placeholder="e.g. SSC, IBPS, UPSSSC">
-        <label class="field-label">Description</label>
-        <textarea id="jDesc" rows="2" placeholder="Optional short description"></textarea>
-
-        <button type="button" class="btn btn-ghost btn-full" style="margin-top:16px;" onclick="toggleJobExtra()" id="jobExtraToggleBtn">+ Add Additional Details (Optional)</button>
-
-        <div id="jobExtraFields" style="display:none; margin-top:6px;">
-          <p style="font-size:11px; color:var(--text-mute); margin:10px 0 4px; text-transform:uppercase; letter-spacing:.06em; font-weight:700;">Important Dates</p>
-          <div class="form-row2">
-            <div><label class="field-label">Application Start</label><input type="text" id="jDateStart" placeholder="e.g. 03 August 2026"></div>
-            <div><label class="field-label">Last Date to Apply</label><input type="text" id="jDateLastApply" placeholder="e.g. 01 September 2026"></div>
-          </div>
-          <div class="form-row2">
-            <div><label class="field-label">Last Date (Fee Payment)</label><input type="text" id="jDateFee" placeholder="e.g. 01 September 2026"></div>
-            <div><label class="field-label">Correction Date</label><input type="text" id="jDateCorrection" placeholder="e.g. 08 September 2026"></div>
-          </div>
-          <div class="form-row2">
-            <div><label class="field-label">Exam Date</label><input type="text" id="jDateExam" placeholder="e.g. Update Soon"></div>
-            <div><label class="field-label">Admit Card</label><input type="text" id="jDateAdmit" placeholder="e.g. Before Exam"></div>
-          </div>
-
-          <p style="font-size:11px; color:var(--text-mute); margin:16px 0 4px; text-transform:uppercase; letter-spacing:.06em; font-weight:700;">Application Fee</p>
-          <div class="form-row2">
-            <div><label class="field-label">General / OBC</label><input type="text" id="jFeeGeneral" placeholder="e.g. ₹185/-"></div>
-            <div><label class="field-label">SC / ST</label><input type="text" id="jFeeScSt" placeholder="e.g. ₹95/-"></div>
-          </div>
-          <label class="field-label">PH / Divyang</label>
-          <input type="text" id="jFeePh" placeholder="e.g. ₹25/-">
-
-          <p style="font-size:11px; color:var(--text-mute); margin:16px 0 4px; text-transform:uppercase; letter-spacing:.06em; font-weight:700;">Eligibility & Vacancy</p>
-          <div class="form-row2">
-            <div><label class="field-label">Age Limit</label><input type="text" id="jAgeLimit" placeholder="e.g. 18-40 years as on 01 July 2026"></div>
-            <div><label class="field-label">Total Posts</label><input type="text" id="jTotalPosts" placeholder="e.g. 3446 Posts"></div>
-          </div>
-          <label class="field-label">Eligibility Criteria</label>
-          <textarea id="jEligibility" rows="2" placeholder="e.g. Class 10 pass from a recognized board, or higher qualification"></textarea>
-
-          <p style="font-size:11px; color:var(--text-mute); margin:16px 0 4px; text-transform:uppercase; letter-spacing:.06em; font-weight:700;">Important Links</p>
-          <div class="form-row2">
-            <div><label class="field-label">Apply Online</label><input type="url" id="jLink" placeholder="https://..."></div>
-            <div><label class="field-label">Admit Card</label><input type="url" id="jLinkAdmitCard" placeholder="https://..."></div>
-          </div>
-          <div class="form-row2">
-            <div><label class="field-label">Result</label><input type="url" id="jLinkResult" placeholder="https://..."></div>
-            <div><label class="field-label">Official Website</label><input type="url" id="jLinkWebsite" placeholder="https://..."></div>
-          </div>
-
-          <label class="field-label">Official Notification</label>
-          <div class="form-row2">
-            <div><input type="url" id="jLinkNotification" placeholder="Paste URL — https://..."></div>
-            <div><input type="file" id="jNotificationFile" accept="application/pdf" disabled style="opacity:.4; cursor:not-allowed;" title="PDF upload coming soon"></div>
-          </div>
-          <p class="upload-hint">Paste a link for now. <span style="color:var(--gold);">Direct PDF upload — Coming Soon.</span></p>
-
-          <label class="field-label">Syllabus</label>
-          <div class="form-row2">
-            <div><input type="url" id="jLinkSyllabus" placeholder="Paste URL — https://..."></div>
-            <div><input type="file" id="jSyllabusFile" accept="application/pdf" disabled style="opacity:.4; cursor:not-allowed;" title="PDF upload coming soon"></div>
-          </div>
-          <p class="upload-hint">Paste a link for now. <span style="color:var(--gold);">Direct PDF upload — Coming Soon.</span></p>
-
-          <p style="font-size:11px; color:var(--text-mute); margin:18px 0 6px; text-transform:uppercase; letter-spacing:.06em; font-weight:700;">Custom Fields (Optional)</p>
-          <p style="font-size:12px; color:var(--text-mute); margin:0 0 10px;">Add any extra detail not covered above — e.g. "Female Fee" → "Exempted", "Minimum Qualification" → "Graduate".</p>
-          <div id="customFieldsList"></div>
-          <button type="button" class="btn btn-ghost btn-xs" onclick="addCustomFieldRow()">+ Add Field</button>
-        </div>
-
-        <div class="error-text" id="jError"></div>
-        <div class="error-text" id="jUploadStatus" style="color:var(--seal);"></div>
-        <div style="display:flex; gap:10px; margin-top:14px;">
-          <button class="btn btn-primary" onclick="submitJob()">Publish</button>
-          <button class="btn btn-ghost" id="jobCancelEditBtn" style="display:none;" onclick="cancelJobEdit()">Cancel Edit</button>
-        </div>
+      <div class="section-head"><span class="section-title">Jobs</span></div>
+      <div class="chiprow">
+        <button class="chip sel" data-c="government" onclick="setJobsCategory('government')">Government</button>
+        <button class="chip" data-c="private" onclick="setJobsCategory('private')">Private</button>
       </div>
-      <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Existing Jobs</span></div>
-      <div class="tab-toggle" style="max-width:340px;">
-        <button id="jobFilterAllBtn" class="active" onclick="setJobsAdminFilter('all')">All</button>
-        <button id="jobFilterGovtBtn" onclick="setJobsAdminFilter('government')">Government</button>
-        <button id="jobFilterPrivBtn" onclick="setJobsAdminFilter('private')">Private</button>
+      <div class="chiprow">
+        <button class="chip sel" data-s="latest_job" onclick="setJobsSubtype('latest_job')">Latest Jobs</button>
+        <button class="chip" data-s="result" onclick="setJobsSubtype('result')">Results</button>
+        <button class="chip" data-s="admit_card" onclick="setJobsSubtype('admit_card')">Admit Card</button>
       </div>
-      <div id="jobsAdminList"><div class="empty-note">Loading…</div></div>
+      <div id="jobsList"><div class="empty-note">Loading…</div></div>
     </div>
   </div>
 
-  <!-- ================= NOTES ================= -->
-  <div class="view" id="view-notes">
+  <!-- ================= LIVE CLASSES ================= -->
+  <div class="view" id="view-live">
     <div class="section">
-      <div class="section-head"><span class="section-title">Notes Upload Karein</span></div>
-      <div class="panel-card">
-        <div class="tab-toggle">
-          <button id="catAcademicBtn" class="active" onclick="setNoteCategoryForm('academic')">Academic</button>
-          <button id="catCompetitiveBtn" onclick="setNoteCategoryForm('competitive')">Competitive</button>
-        </div>
-        <div class="form-row2">
-          <div><label class="field-label">Subject</label><input type="text" id="ntSubject" placeholder="jaise Maths, History"></div>
-          <div><label class="field-label">Class / Exam</label><input type="text" id="ntClassExam" placeholder="jaise 10th, SSC CGL"></div>
-        </div>
-        <label class="field-label">Topic</label>
-        <input type="text" id="ntTopic" placeholder="Note ka topic / title">
-        <label class="field-label">Access Mode</label>
-        <select id="ntAccessMode">
-          <option value="download_read">Free Download (Read + Download for everyone)</option>
-          <option value="only_read">Read Only (No download, for everyone)</option>
-          <option value="premium_download">Premium Download (Free = Read Only, Premium = Download)</option>
-        </select>
-        <label class="field-label">PDF File (max 20MB)</label>
-        <input type="file" id="ntFile" accept="application/pdf">
-        <div class="error-text" id="ntError"></div>
-        <button class="btn btn-primary" style="margin-top:14px;" id="ntUploadBtn" onclick="submitNote()">Upload Karein</button>
+      <div class="section-head"><span class="section-title">Live Classes</span></div>
+      <div class="chiprow">
+        <button class="chip sel" data-lv="upcoming" onclick="setLiveTab('upcoming')">Upcoming / Live</button>
+        <button class="chip" data-lv="past" onclick="setLiveTab('past')">Past Recordings</button>
       </div>
-      <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Uploaded Notes</span></div>
-      <div id="notesAdminList"><div class="empty-note">Loading…</div></div>
+      <div id="liveList"><div class="empty-note">Loading…</div></div>
     </div>
   </div>
 
-  <!-- ================= STUDENTS ================= -->
-  <div class="view" id="view-students">
+  <!-- ================= NOTICE ================= -->
+  <div class="view" id="view-notice">
     <div class="section">
-      <div class="section-head"><span class="section-title">Manage Students</span></div>
-      <div class="panel-card">
-        <label class="field-label">Search by Name or Email</label>
-        <input type="text" id="studentSearch" placeholder="Type to search…" oninput="loadStudents()">
-      </div>
-      <div class="section-head" style="margin-top:18px;"><span class="section-title" style="font-size:16px;">Students</span></div>
-      <div id="studentsList"><div class="empty-note">Loading…</div></div>
+      <div class="section-head"><span class="section-title">All Notices</span></div>
+      <div id="noticeFullList"><div class="empty-note">Loading…</div></div>
     </div>
   </div>
 
-  <!-- ================= SETTINGS ================= -->
-  <div class="view" id="view-settings">
+  <!-- ================= ABOUT ================= -->
+  <div class="view" id="view-about">
     <div class="section">
-      <div class="section-head"><span class="section-title">Settings</span></div>
-      <div class="panel-card">
-        <label class="field-label">New Password</label>
-        <div class="pw-wrap"><input type="password" id="newPw1" placeholder="New password"><button type="button" class="pw-toggle" onclick="togglePw('newPw1',this)">👁</button></div>
-        <label class="field-label">Confirm New Password</label>
-        <div class="pw-wrap"><input type="password" id="newPw2" placeholder="Re-enter new password"><button type="button" class="pw-toggle" onclick="togglePw('newPw2',this)">👁</button></div>
-        <div class="error-text" id="pwError"></div>
-        <button class="btn btn-primary" style="margin-top:14px;" onclick="submitPasswordChange()">Update Password</button>
+      <div class="section-head"><span class="section-title">About Vidhyapath</span></div>
+      <div class="admit-card" style="display:block; padding:32px;">
+        <p class="admit-sub" style="max-width:640px; white-space:pre-line;" id="aboutTextDisplay">Loading…</p>
       </div>
+    </div>
+  </div>
 
-      <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">About Page Content</span></div>
-      <div class="panel-card">
-        <label class="field-label">About Text (shown on the student site's About page)</label>
-        <textarea id="aboutTextInput" rows="6" placeholder="Loading…"></textarea>
-        <div class="error-text" id="aboutError"></div>
-        <button class="btn btn-primary" style="margin-top:14px;" onclick="saveAboutText()">Save About Text</button>
+  <!-- ================= PROFILE ================= -->
+  <div class="view" id="view-profile">
+    <div class="section">
+      <div class="section-head"><span class="section-title">My Profile</span></div>
+      <div class="admit-card" style="display:block; padding:30px;">
+        <div id="profileInfo" style="color:var(--ink);"></div>
+        <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
+          <button class="btn-outline-ink" onclick="openPasswordChange()">Change Password</button>
+          <button class="btn-stamp" onclick="doLogout()">Logout</button>
+        </div>
       </div>
     </div>
   </div>
 
 </div>
 
+<footer>Committed to the success of every <b>Vidhyapath</b> student. © <span id="yr"></span> Vidhyapath. All rights reserved.</footer>
+
+<!-- ================= AUTH MODAL ================= -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('authModal')">✕</button>
+    <div class="modal-head">
+      <div class="brand-seal" style="margin:0 auto;">वि</div>
+      <h2>Welcome to Vidhyapath</h2>
+      <p>Structure your preparation — get started today</p>
+    </div>
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active" onclick="setAuthTab('login')">Login</button>
+      <button id="tabSignup" onclick="setAuthTab('signup')">Signup</button>
+    </div>
+
+    <div id="loginForm">
+      <label class="field-label">Email</label>
+      <input type="email" id="loginEmail" placeholder="your@email.com">
+      <label class="field-label">Password</label>
+      <div class="pw-wrap"><input type="password" id="loginPassword" placeholder="••••••••"><button type="button" class="pw-toggle" onclick="togglePw('loginPassword',this)">👁</button></div>
+      <div class="error-text" id="loginError"></div>
+      <button class="btn-full" id="loginBtn" onclick="doLogin()">Login</button>
+    </div>
+
+    <div id="signupForm" style="display:none;">
+      <label class="field-label">Full Name</label>
+      <input type="text" id="suName" placeholder="Your full name">
+      <label class="field-label">Email</label>
+      <input type="email" id="suEmail" placeholder="your@email.com">
+      <label class="field-label">Mobile Number (10 digit)</label>
+      <input type="tel" id="suMobile" maxlength="10" placeholder="9876543210">
+      <label class="field-label">Exam Category</label>
+      <select id="suExamCat">
+        <option value="">— Select —</option>
+        <option value="SSC">SSC</option>
+        <option value="Bank">Bank</option>
+        <option value="TCS/IT">TCS / IT Jobs</option>
+        <option value="Academic-9-10">Academic (9th-10th)</option>
+        <option value="Academic-11-12">Academic (11th-12th)</option>
+        <option value="Graduation">Graduation</option>
+        <option value="Other">Other</option>
+      </select>
+      <label class="field-label">Password</label>
+      <div class="pw-wrap"><input type="password" id="suPassword" placeholder="At least 6 characters"><button type="button" class="pw-toggle" onclick="togglePw('suPassword',this)">👁</button></div>
+      <label class="field-label">Confirm Password</label>
+      <div class="pw-wrap"><input type="password" id="suPasswordConfirm" placeholder="Re-enter password"><button type="button" class="pw-toggle" onclick="togglePw('suPasswordConfirm',this)">👁</button></div>
+      <div class="error-text" id="signupError"></div>
+      <button class="btn-full" id="signupBtn" onclick="doSignup()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PASSWORD CHANGE MODAL ================= -->
+<div class="modal-overlay" id="pwModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('pwModal')">✕</button>
+    <div class="modal-head"><h2>Password Change</h2></div>
+    <label class="field-label">New Password</label>
+    <div class="pw-wrap"><input type="password" id="newPw1" placeholder="New password"><button type="button" class="pw-toggle" onclick="togglePw('newPw1',this)">👁</button></div>
+    <label class="field-label">Confirm New Password</label>
+    <div class="pw-wrap"><input type="password" id="newPw2" placeholder="Re-enter new password"><button type="button" class="pw-toggle" onclick="togglePw('newPw2',this)">👁</button></div>
+    <div class="error-text" id="pwError"></div>
+    <button class="btn-full" onclick="submitPasswordChange()">Update</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
+/* ================= CONFIG ================= */
 const SUPABASE_URL = 'https://iyzujwixwfydmkzmhrxo.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_4t1qso9eT9lNU_aGnS8hiQ_zX3EGBXd';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const NOTES_BUCKET = 'notes-pdfs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
-let currentUser = null, currentProfile = null;
-let noteCategoryForm = 'academic';
+let currentUser = null;
+let currentProfile = null;
+let notesCategory = 'academic';
+let jobsCategory = 'government';
+let jobsSubtype = 'latest_job';
+let liveTab = 'upcoming';
+let readerDoc = null, readerPage = 1, readerNumPages = 1;
 
-/* Badlein isse apna khud ka secret code - sirf yehi jaanta ho */
-const ADMIN_SETUP_SECRET = 'Vidhyapath@Admin2026';
+document.getElementById('yr').textContent = new Date().getFullYear();
 
-function setLoginTab(tab){
-  document.getElementById('loginTabBtn').classList.toggle('active', tab==='login');
-  document.getElementById('registerTabBtn').classList.toggle('active', tab==='register');
-  document.getElementById('adminLoginBox').style.display = tab==='login' ? 'block':'none';
-  document.getElementById('adminRegisterBox').style.display = tab==='register' ? 'block':'none';
-  document.getElementById('loginHeading').textContent = tab==='login' ? 'Admin Login' : 'New Admin Account';
-  document.getElementById('loginSubText').textContent = tab==='login' ? 'Authorized Personnel Only' : 'Create a new admin account using the setup secret code';
+/* ================= VIEW ROUTING ================= */
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const el = document.getElementById('view-'+name);
+  if(el) el.classList.add('active');
+  document.querySelectorAll('#pillnav button').forEach(b=>b.classList.toggle('active', b.dataset.v===name));
+  window.scrollTo({top:0, behavior:'smooth'});
+  if(name==='notes') loadNotes();
+  if(name==='jobs') loadJobs();
+  if(name==='live') loadVideos();
+  if(name==='notice') loadNoticesFull();
+  if(name==='test') renderTestAccess();
+  if(name==='about') loadAboutText();
+  if(name==='profile') renderProfile();
 }
 
-async function doAdminRegister(){
-  const secret = document.getElementById('regSecret').value;
-  const full_name = document.getElementById('regName').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
-  const password = document.getElementById('regPassword').value;
-  const errEl = document.getElementById('registerError');
-  errEl.textContent = '';
-
-  if(secret !== ADMIN_SETUP_SECRET){ errEl.textContent = 'Incorrect secret code.'; return; }
-  if(!full_name || !email || !password){ errEl.textContent = 'Sabhi fields bharein.'; return; }
-  if(password.length < 6){ errEl.textContent = 'Password must be at least 6 characters.'; return; }
-
-  document.getElementById('registerBtn').disabled = true;
-  const { data, error } = await sb.auth.signUp({
-    email, password,
-    options: { data: { full_name, role: 'admin' } }
-  });
-  document.getElementById('registerBtn').disabled = false;
-  if(error){ errEl.textContent = 'Fail: ' + error.message; return; }
-  toast('Admin account created successfully. Please login.');
-  setLoginTab('login');
-  document.getElementById('adminEmail').value = email;
+function renderTestAccess(){
+  const btn = document.getElementById('testCbtBtn');
+  const note = document.getElementById('testPlanNote');
+  const hasFullAccess = currentProfile?.plan === 'full_access';
+  if(hasFullAccess){
+    btn.textContent = 'Go to CBT Portal →';
+    btn.style.opacity = '1';
+    note.style.display = 'none';
+  } else {
+    btn.textContent = '🔒 Go to CBT Portal →';
+    btn.style.opacity = '0.7';
+    note.style.display = 'block';
+  }
 }
 
+function openCbtPortal(){
+  if(!currentUser){ toast('Please login to access this feature.'); openModal('authModal'); return; }
+  if(currentProfile?.plan !== 'full_access'){
+    toast('CBT Test access requires the Full Access plan.');
+    return;
+  }
+  window.open('https://mcmtashutosh-code.github.io/cbt-web-project/','_blank');
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
 function esc(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2400); }
-function accessLabel(mode){
-  if(mode==='only_read') return 'Read Only';
-  if(mode==='premium_download') return 'Premium Download';
-  return 'Free Download';
-}
 function togglePw(id, btn){
   const el = document.getElementById(id);
   const show = el.type === 'password';
@@ -476,118 +522,106 @@ function togglePw(id, btn){
   btn.textContent = show ? '🙈' : '👁';
 }
 
-function showView(name){
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById('view-'+name).classList.add('active');
-  document.querySelectorAll('.pillnav button').forEach(b=>b.classList.toggle('active', b.dataset.v===name));
-  if(name==='notices') loadNoticesAdmin();
-  if(name==='videos') loadVideosAdmin();
-  if(name==='jobs') loadJobsAdmin();
-  if(name==='notes') loadNotesAdmin();
-  if(name==='students') loadStudents();
-  if(name==='dash') loadDashStats();
-  if(name==='settings') loadAboutText();
+/* ================= AUTH ================= */
+function onAuthAreaClick(){
+  if(currentUser){ showView('profile'); }
+  else{ openModal('authModal'); setAuthTab('login'); }
+}
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+function setAuthTab(tab){
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabSignup').classList.toggle('active', tab==='signup');
+  document.getElementById('loginForm').style.display = tab==='login' ? 'block':'none';
+  document.getElementById('signupForm').style.display = tab==='signup' ? 'block':'none';
 }
 
-/* ================= STUDENTS (Premium management) ================= */
-async function loadStudents(){
-  const el = document.getElementById('studentsList');
-  const q = (document.getElementById('studentSearch')?.value || '').trim();
-  el.innerHTML = '<div class="empty-note">Loading…</div>';
-  let query = sb.from('profiles').select('*').eq('role', 'student').order('created_at', {ascending:false}).limit(50);
-  if(q) query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%`);
-  const { data, error } = await query;
-  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
-  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">No students found.</div>'; return; }
-  el.innerHTML = data.map(s=>`
-    <div class="list-item">
-      <div>
-        <p class="li-title">${esc(s.full_name)} ${planBadge(s.plan)}</p>
-        <div class="li-meta"><span>${esc(s.email)}</span>${s.phone?`<span>${esc(s.phone)}</span>`:''}${s.exam_category?`<span>${esc(s.exam_category)}</span>`:''}</div>
-      </div>
-      <div class="li-actions">
-        <select style="width:auto; padding:8px 10px; font-size:12px;" onchange="setStudentPlan('${s.id}', this.value)">
-          <option value="free" ${(!s.plan||s.plan==='free')?'selected':''}>Free</option>
-          <option value="notes_only" ${s.plan==='notes_only'?'selected':''}>Notes Only</option>
-          <option value="full_access" ${s.plan==='full_access'?'selected':''}>Full Access</option>
-        </select>
-      </div>
-    </div>
-  `).join('');
-}
-function planBadge(plan){
-  if(plan==='full_access') return '<span style="color:var(--gold);">★ Full Access</span>';
-  if(plan==='notes_only') return '<span style="color:var(--seal);">● Notes Only</span>';
-  return '<span style="color:var(--text-mute);">Free</span>';
-}
-async function setStudentPlan(id, plan){
-  const { error } = await sb.from('profiles').update({ plan }).eq('id', id);
-  if(error){ toast('Update failed: ' + error.message); return; }
-  toast('Plan updated successfully.');
-  loadStudents();
-}
-
-/* ================= AUTH (admin-only) ================= */
-async function doAdminLogin(){
-  const email = document.getElementById('adminEmail').value.trim();
-  const password = document.getElementById('adminPassword').value;
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
   const errEl = document.getElementById('loginError');
   errEl.textContent = '';
-  if(!email || !password){ errEl.textContent = 'Please enter email and password.'; return; }
+  if(!email || !password){ errEl.textContent = 'Please enter both email and password.'; return; }
   document.getElementById('loginBtn').disabled = true;
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if(error){ document.getElementById('loginBtn').disabled = false; errEl.textContent = 'Login fail: ' + error.message; return; }
-  currentUser = data.user;
-  const { data: profile, error: perr } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   document.getElementById('loginBtn').disabled = false;
-  if(perr || !profile || profile.role !== 'admin'){
-    errEl.textContent = 'This account does not have admin access. Access denied.';
-    await sb.auth.signOut();
-    return;
-  }
-  currentProfile = profile;
-  enterApp();
+  if(error){ errEl.textContent = 'Login fail: ' + error.message; return; }
+  currentUser = data.user;
+  await loadProfile();
+  closeModal('authModal');
+  toast('Login successful. Welcome, ' + (currentProfile?.full_name || ''));
+  refreshAuthUI();
 }
 
-async function checkExistingSession(){
-  const { data: sess } = await sb.auth.getSession();
-  if(!sess?.session?.user) return;
-  currentUser = sess.session.user;
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  if(profile && profile.role === 'admin'){ currentProfile = profile; enterApp(); }
+async function doSignup(){
+  const full_name = document.getElementById('suName').value.trim();
+  const email = document.getElementById('suEmail').value.trim();
+  const mobile = document.getElementById('suMobile').value.trim();
+  const exam_category = document.getElementById('suExamCat').value;
+  const password = document.getElementById('suPassword').value;
+  const password2 = document.getElementById('suPasswordConfirm').value;
+  const errEl = document.getElementById('signupError');
+  errEl.textContent = '';
+
+  if(!full_name || !email || !mobile || !exam_category || !password){ errEl.textContent = 'All fields are required.'; return; }
+  if(!/^\d{10}$/.test(mobile)){ errEl.textContent = 'Mobile number 10 digit ka hona chahiye.'; return; }
+  if(password.length < 6){ errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if(password !== password2){ errEl.textContent = 'Dono password match nahi kar rahe.'; return; }
+
+  document.getElementById('signupBtn').disabled = true;
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { full_name, phone: mobile, exam_category, role: 'student' } }
+  });
+  document.getElementById('signupBtn').disabled = false;
+  if(error){ errEl.textContent = 'Signup fail: ' + error.message; return; }
+  toast('Registration successful. Please login now.');
+  setAuthTab('login');
 }
 
-function enterApp(){
-  document.getElementById('loginWrap').style.display = 'none';
-  document.getElementById('navbar').style.display = 'block';
-  document.getElementById('appWrap').style.display = 'block';
-  loadDashStats();
-}
-
-async function doAdminLogout(){
+async function doLogout(){
   await sb.auth.signOut();
   currentUser = null; currentProfile = null;
-  document.getElementById('appWrap').style.display = 'none';
-  document.getElementById('navbar').style.display = 'none';
-  document.getElementById('loginWrap').style.display = 'block';
+  refreshAuthUI();
+  showView('home');
+  toast('Aap Successfully Logout ho gaye hain.');
 }
 
-/* ================= ABOUT PAGE CONTENT ================= */
-async function loadAboutText(){
-  const { data, error } = await sb.from('site_settings').select('value').eq('key', 'about_text').single();
-  const box = document.getElementById('aboutTextInput');
-  if(error || !data){ box.placeholder = 'Could not load current text.'; return; }
-  box.value = data.value || '';
-}
-async function saveAboutText(){
-  const value = document.getElementById('aboutTextInput').value.trim();
-  const errEl = document.getElementById('aboutError'); errEl.textContent = '';
-  if(!value){ errEl.textContent = 'About text cannot be empty.'; return; }
-  const { error } = await sb.from('site_settings').upsert({ key: 'about_text', value, updated_at: new Date().toISOString() });
-  if(error){ errEl.textContent = error.message; return; }
-  toast('About text updated successfully.');
+async function loadProfile(){
+  const { data: sess } = await sb.auth.getSession();
+  currentUser = sess?.session?.user || null;
+  if(!currentUser) return;
+  const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if(!error) currentProfile = data;
 }
 
+function refreshAuthUI(){
+  const btn = document.getElementById('authAreaBtn');
+  btn.textContent = currentUser ? (currentProfile?.full_name?.split(' ')[0] || 'Profile') : 'Login';
+}
+
+function renderProfile(){
+  if(!currentProfile){ document.getElementById('profileInfo').innerHTML = '<p>Please login to continue.</p>'; return; }
+  document.getElementById('profileInfo').innerHTML = `
+    <div class="stub-row"><span>Name</span><b>${esc(currentProfile.full_name)}</b></div>
+    <div class="stub-row"><span>Email</span><b>${esc(currentProfile.email)}</b></div>
+    <div class="stub-row"><span>Mobile</span><b>${esc(currentProfile.phone||'-')}</b></div>
+    <div class="stub-row"><span>Exam Category</span><b>${esc(currentProfile.exam_category||'-')}</b></div>
+    <div class="stub-row" style="border-bottom:none;"><span>Plan</span><b style="color:${planColor(currentProfile.plan)};">${planText(currentProfile.plan)}</b></div>
+  `;
+}
+function planText(plan){
+  if(plan==='full_access') return '★ Full Access';
+  if(plan==='notes_only') return 'Notes Only';
+  return 'Free';
+}
+function planColor(plan){
+  if(plan==='full_access') return 'var(--stamp)';
+  if(plan==='notes_only') return 'var(--seal)';
+  return 'inherit';
+}
+
+function openPasswordChange(){ openModal('pwModal'); }
 async function submitPasswordChange(){
   const p1 = document.getElementById('newPw1').value;
   const p2 = document.getElementById('newPw2').value;
@@ -597,462 +631,358 @@ async function submitPasswordChange(){
   if(p1 !== p2){ errEl.textContent = 'Password match nahi karta.'; return; }
   const { error } = await sb.auth.updateUser({ password: p1 });
   if(error){ errEl.textContent = error.message; return; }
+  closeModal('pwModal');
   toast('Password updated successfully.');
-  document.getElementById('newPw1').value=''; document.getElementById('newPw2').value='';
 }
 
-/* ================= DASHBOARD ================= */
-async function loadDashStats(){
-  const [{count:nc}, {count:vc}, {count:jc}, {count:noc}] = await Promise.all([
-    sb.from('notices').select('*', {count:'exact', head:true}).eq('is_active', true),
-    sb.from('video_links').select('*', {count:'exact', head:true}),
-    sb.from('jobs').select('*', {count:'exact', head:true}).eq('is_active', true),
-    sb.from('notes').select('*', {count:'exact', head:true}),
-  ]);
-  document.getElementById('statNotices').textContent = nc ?? 0;
-  document.getElementById('statVideos').textContent = vc ?? 0;
-  document.getElementById('statJobs').textContent = jc ?? 0;
-  document.getElementById('statNotes').textContent = noc ?? 0;
+/* ================= ABOUT (dynamic content) ================= */
+async function loadAboutText(){
+  const el = document.getElementById('aboutTextDisplay');
+  const { data, error } = await sb.from('site_settings').select('value').eq('key', 'about_text').single();
+  if(error || !data){ el.textContent = 'Vidhyapath is a dedicated EdTech platform for Indian exam aspirants.'; return; }
+  el.textContent = data.value;
+}
+
+/* ================= REACH STATS ================= */
+async function loadReachStats(){
+  const { data, error } = await sb.rpc('get_platform_stats');
+  if(error || !data) return;
+  document.getElementById('statStudents').textContent = data.students ?? 0;
+  document.getElementById('statNotesHome').textContent = data.notes ?? 0;
+  document.getElementById('statJobsHome').textContent = data.jobs ?? 0;
+  document.getElementById('statLiveHome').textContent = data.live_classes ?? 0;
 }
 
 /* ================= NOTICES ================= */
-async function submitNotice(){
-  const title = document.getElementById('nTitle').value.trim();
-  const message = document.getElementById('nMessage').value.trim();
-  const notice_type = document.getElementById('nType').value;
-  const priority = document.getElementById('nPriority').value;
-  const errEl = document.getElementById('nError'); errEl.textContent='';
-  if(!title || !message){ errEl.textContent = 'Please enter both title and message.'; return; }
-  const { error } = await sb.from('notices').insert({ title, message, notice_type, priority, is_active: true });
-  if(error){ errEl.textContent = error.message; return; }
-  document.getElementById('nTitle').value=''; document.getElementById('nMessage').value='';
-  toast('Notice published successfully.');
-  loadNoticesAdmin();
+async function loadNoticesHome(){
+  const { data, error } = await sb.from('notices').select('*').eq('is_active', true).order('priority', {ascending:false}).order('created_at', {ascending:false}).limit(6);
+  const el = document.getElementById('homeNoticeStrip');
+  if(error || !data || !data.length){ el.innerHTML = '<div class="empty-note">No notices available at this time.</div>'; return; }
+  el.innerHTML = data.map(n=>noticeCardHtml(n)).join('');
+  updateUnreadBadge();
 }
 
-async function loadNoticesAdmin(){
-  const el = document.getElementById('noticesAdminList');
-  const { data, error } = await sb.from('notices').select('*').order('created_at', {ascending:false});
-  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
-  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">No notices available.</div>'; return; }
-  el.innerHTML = data.map(n=>`
-    <div class="list-item">
-      <div>
-        <p class="li-title">${esc(n.title||'Notice')} ${n.is_active?'':' <span style="color:var(--stamp);">(Inactive)</span>'}</p>
-        <div class="li-meta"><span>${esc(n.notice_type||'General')}</span><span>${esc(n.priority||'normal')}</span><span>${new Date(n.created_at).toLocaleDateString('en-IN')}</span></div>
-        <p style="font-size:12.5px; color:var(--text-dim); margin:8px 0 0;">${esc(n.message)}</p>
-      </div>
-      <div class="li-actions">
-        <button class="btn btn-ghost btn-xs" onclick="toggleNoticeActive(${n.id}, ${!n.is_active})">${n.is_active?'Deactivate':'Activate'}</button>
-        <button class="btn btn-danger btn-xs" onclick="deleteNotice(${n.id})">Delete</button>
-      </div>
-    </div>
-  `).join('');
-}
-async function toggleNoticeActive(id, val){
-  await sb.from('notices').update({ is_active: val }).eq('id', id);
-  loadNoticesAdmin();
-}
-async function deleteNotice(id){
-  if(!confirm('Delete this notice?')) return;
-  await sb.from('notices').delete().eq('id', id);
-  toast('Notice deleted successfully.');
-  loadNoticesAdmin();
+async function loadNoticesFull(){
+  const { data, error } = await sb.from('notices').select('*').eq('is_active', true).order('priority', {ascending:false}).order('created_at', {ascending:false});
+  const el = document.getElementById('noticeFullList');
+  if(error || !data || !data.length){ el.innerHTML = '<div class="empty-note">No notices available at this time.</div>'; return; }
+  el.innerHTML = data.map(n=>noticeCardHtml(n, true)).join('');
+  updateUnreadBadge();
 }
 
-/* ================= VIDEO LINKS ================= */
-let editingVideoId = null;
-
-async function submitVideo(){
-  const title = document.getElementById('vTitle').value.trim();
-  const youtube_url = document.getElementById('vUrl').value.trim();
-  const subject = document.getElementById('vSubject').value.trim();
-  const exam_category = document.getElementById('vExamCat').value.trim();
-  const description = document.getElementById('vDesc').value.trim();
-  const scheduled_at = document.getElementById('vSchedule').value || null;
-  const is_live = document.getElementById('vIsLive').value === 'true';
-  const errEl = document.getElementById('vError'); errEl.textContent='';
-  if(!title || !youtube_url){ errEl.textContent = 'Title and YouTube URL are required.'; return; }
-
-  const payload = {
-    title, youtube_url, subject, exam_category, description,
-    scheduled_at: scheduled_at ? new Date(scheduled_at).toISOString() : null,
-    is_live
-  };
-
-  let error;
-  if(editingVideoId){
-    ({ error } = await sb.from('video_links').update(payload).eq('id', editingVideoId));
-  } else {
-    payload.created_by = currentUser.id;
-    ({ error } = await sb.from('video_links').insert(payload));
-  }
-  if(error){ errEl.textContent = error.message; return; }
-
-  const wasEditing = !!editingVideoId;
-  editingVideoId = null;
-  document.querySelector('#view-videos .panel-card .btn-primary').textContent = 'Add Link';
-  document.getElementById('videoCancelEditBtn').style.display = 'none';
-
-  document.getElementById('vTitle').value=''; document.getElementById('vUrl').value='';
-  document.getElementById('vSubject').value=''; document.getElementById('vExamCat').value='';
-  document.getElementById('vDesc').value=''; document.getElementById('vSchedule').value='';
-  toast(wasEditing ? 'Live class link updated successfully.' : 'Live class link added successfully.');
-  loadVideosAdmin();
+function noticeCardHtml(n, full){
+  const pr = n.priority || 'normal';
+  return `<div class="notice-card pr-${pr}" style="${full?'flex:1 1 100%; max-width:none; margin-bottom:10px;':''}" onclick="markNoticeRead(${n.id})">
+    <div class="ntag"><span>${esc(n.notice_type||'General')}</span><span>${new Date(n.created_at).toLocaleDateString('en-IN')}</span></div>
+    <p class="ntitle">${esc(n.title||'Notice')}</p>
+    <p class="nmsg">${esc(n.message)}</p>
+  </div>`;
 }
 
-async function loadVideosAdmin(){
-  const el = document.getElementById('videosAdminList');
-  const { data, error } = await sb.from('video_links').select('*').order('created_at', {ascending:false});
-  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
-  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">No live class links available.</div>'; return; }
-  el.innerHTML = data.map(v=>`
-    <div class="list-item">
-      <div>
-        <p class="li-title">${esc(v.title)} ${v.is_live?' <span style="color:var(--stamp);">● LIVE</span>':''}</p>
-        <div class="li-meta">${v.subject?`<span>${esc(v.subject)}</span>`:''}${v.exam_category?`<span>${esc(v.exam_category)}</span>`:''}${v.scheduled_at?`<span>${new Date(v.scheduled_at).toLocaleString('en-IN')}</span>`:''}</div>
-      </div>
-      <div class="li-actions">
-        <button class="btn btn-ghost btn-xs" onclick='editVideo(${JSON.stringify(v).replace(/'/g,"&#39;")})'>Edit</button>
-        <button class="btn btn-ghost btn-xs" onclick="window.open('${esc(v.youtube_url)}','_blank')">Open</button>
-        <button class="btn btn-danger btn-xs" onclick="deleteVideo('${v.id}')">Delete</button>
-      </div>
-    </div>
-  `).join('');
+async function markNoticeRead(noticeId){
+  if(!currentUser) return;
+  await sb.from('notice_reads').upsert({ user_id: currentUser.id, notice_id: noticeId, read_at: new Date().toISOString() }, { onConflict: 'user_id,notice_id' });
+  updateUnreadBadge();
 }
 
-function editVideo(v){
-  editingVideoId = v.id;
-  document.getElementById('vTitle').value = v.title || '';
-  document.getElementById('vUrl').value = v.youtube_url || '';
-  document.getElementById('vSubject').value = v.subject || '';
-  document.getElementById('vExamCat').value = v.exam_category || '';
-  document.getElementById('vDesc').value = v.description || '';
-  document.getElementById('vSchedule').value = v.scheduled_at ? toLocalDatetimeInput(v.scheduled_at) : '';
-  document.getElementById('vIsLive').value = v.is_live ? 'true' : 'false';
-
-  document.querySelector('#view-videos .panel-card .btn-primary').textContent = 'Update Link';
-  document.getElementById('videoCancelEditBtn').style.display = 'inline-block';
-  document.querySelector('#view-videos .panel-card').scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-function toLocalDatetimeInput(isoStr){
-  const d = new Date(isoStr);
-  const pad = n => String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function cancelVideoEdit(){
-  editingVideoId = null;
-  document.getElementById('vTitle').value=''; document.getElementById('vUrl').value='';
-  document.getElementById('vSubject').value=''; document.getElementById('vExamCat').value='';
-  document.getElementById('vDesc').value=''; document.getElementById('vSchedule').value='';
-  document.getElementById('vIsLive').value = 'false';
-  document.querySelector('#view-videos .panel-card .btn-primary').textContent = 'Add Link';
-  document.getElementById('videoCancelEditBtn').style.display = 'none';
-}
-
-async function deleteVideo(id){
-  if(!confirm('Delete this link?')) return;
-  await sb.from('video_links').delete().eq('id', id);
-  toast('Deleted successfully.');
-  loadVideosAdmin();
-}
-
-/* ================= CUSTOM FIELDS (Jobs) ================= */
-function addCustomFieldRow(label, value){
-  const list = document.getElementById('customFieldsList');
-  const row = document.createElement('div');
-  row.className = 'custom-field-row';
-  row.innerHTML = `
-    <input type="text" class="cf-label" placeholder="Field name e.g. Female Fee" value="${esc(label||'')}">
-    <input type="text" class="cf-value" placeholder="Value e.g. Exempted" value="${esc(value||'')}">
-    <button type="button" onclick="this.parentElement.remove()">✕</button>
-  `;
-  list.appendChild(row);
-}
-function collectCustomFields(){
-  const rows = document.querySelectorAll('#customFieldsList .custom-field-row');
-  const result = [];
-  rows.forEach(r=>{
-    const label = r.querySelector('.cf-label').value.trim();
-    const value = r.querySelector('.cf-value').value.trim();
-    if(label && value) result.push({label, value});
-  });
-  return result;
-}
-function clearCustomFields(){
-  document.getElementById('customFieldsList').innerHTML = '';
-}
-async function uploadJobPdf(file, prefix){
-  const path = `${prefix}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-  const { error } = await sb.storage.from('job-docs').upload(path, file, { upsert:false });
-  if(error) throw new Error(error.message);
-  const { data } = sb.storage.from('job-docs').getPublicUrl(path);
-  return data.publicUrl;
-}
-
-/* ================= JOBS ================= */
-function toggleJobExtra(){
-  const box = document.getElementById('jobExtraFields');
-  const btn = document.getElementById('jobExtraToggleBtn');
-  const show = box.style.display === 'none';
-  box.style.display = show ? 'block' : 'none';
-  btn.textContent = show ? '− Hide Additional Details' : '+ Add Additional Details (Optional)';
-}
-
-function val(id){ return (document.getElementById(id)?.value || '').trim(); }
-
-function buildImportantDates(){
-  const parts = [];
-  if(val('jDateStart')) parts.push('Application Start: ' + val('jDateStart'));
-  if(val('jDateLastApply')) parts.push('Last Date to Apply: ' + val('jDateLastApply'));
-  if(val('jDateFee')) parts.push('Last Date (Fee): ' + val('jDateFee'));
-  if(val('jDateCorrection')) parts.push('Correction Date: ' + val('jDateCorrection'));
-  if(val('jDateExam')) parts.push('Exam Date: ' + val('jDateExam'));
-  if(val('jDateAdmit')) parts.push('Admit Card: ' + val('jDateAdmit'));
-  return parts.join('\n');
-}
-
-async function submitJob(){
-  const category = document.getElementById('jCategory').value;
-  const sub_type = document.getElementById('jSubtype').value;
-  const title = val('jTitle');
-  const organization = val('jOrg');
-  const description = val('jDesc');
-  const errEl = document.getElementById('jError'); errEl.textContent='';
-  const statusEl = document.getElementById('jUploadStatus'); statusEl.textContent='';
-  if(!title){ errEl.textContent = 'Title is required.'; return; }
-
-  let link_notification = val('jLinkNotification');
-  let link_syllabus = val('jLinkSyllabus');
-  const notifFile = document.getElementById('jNotificationFile').files[0];
-  const syllFile = document.getElementById('jSyllabusFile').files[0];
-
-  try{
-    if(notifFile){
-      statusEl.textContent = 'Uploading Notification PDF…';
-      link_notification = await uploadJobPdf(notifFile, 'notifications');
-    }
-    if(syllFile){
-      statusEl.textContent = 'Uploading Syllabus PDF…';
-      link_syllabus = await uploadJobPdf(syllFile, 'syllabus');
-    }
-  }catch(e){
-    statusEl.textContent = '';
-    errEl.textContent = 'File upload failed: ' + e.message;
-    return;
-  }
-  statusEl.textContent = '';
-
-  const payload = {
-    category, sub_type, title, organization, description,
-    apply_link: val('jLink'),
-    important_dates: buildImportantDates(),
-    eligibility: val('jEligibility'),
-    age_limit: val('jAgeLimit'),
-    total_posts: val('jTotalPosts'),
-    fee_general: val('jFeeGeneral'),
-    fee_sc_st: val('jFeeScSt'),
-    fee_ph: val('jFeePh'),
-    link_notification, link_syllabus,
-    link_admit_card: val('jLinkAdmitCard'),
-    link_result: val('jLinkResult'),
-    link_official_website: val('jLinkWebsite'),
-    extra_fields: collectCustomFields()
-  };
-
-  let error;
-  if(editingJobId){
-    ({ error } = await sb.from('jobs').update(payload).eq('id', editingJobId));
-  } else {
-    payload.is_active = true;
-    payload.created_by = currentUser.id;
-    ({ error } = await sb.from('jobs').insert(payload));
-  }
-  if(error){ errEl.textContent = error.message; return; }
-
-  const wasEditing = !!editingJobId;
-  editingJobId = null;
-  document.querySelector('#view-jobs .panel-card .btn-primary').textContent = 'Publish';
-  document.getElementById('jobCancelEditBtn').style.display = 'none';
-
-  ['jTitle','jOrg','jDesc','jLink','jDateStart','jDateLastApply','jDateFee','jDateCorrection','jDateExam','jDateAdmit',
-   'jFeeGeneral','jFeeScSt','jFeePh','jAgeLimit','jTotalPosts','jEligibility',
-   'jLinkNotification','jLinkSyllabus','jLinkAdmitCard','jLinkResult','jLinkWebsite'].forEach(id=>{
-    const el = document.getElementById(id); if(el) el.value = '';
-  });
-  document.getElementById('jNotificationFile').value = '';
-  document.getElementById('jSyllabusFile').value = '';
-  clearCustomFields();
-  toast(wasEditing ? 'Job update saved successfully.' : 'Job update published successfully.');
-  loadJobsAdmin();
-}
-let jobsAdminFilter = 'all';
-let editingJobId = null;
-
-function setJobsAdminFilter(f){
-  jobsAdminFilter = f;
-  document.getElementById('jobFilterAllBtn').classList.toggle('active', f==='all');
-  document.getElementById('jobFilterGovtBtn').classList.toggle('active', f==='government');
-  document.getElementById('jobFilterPrivBtn').classList.toggle('active', f==='private');
-  loadJobsAdmin();
-}
-
-async function loadJobsAdmin(){
-  const el = document.getElementById('jobsAdminList');
-  let query = sb.from('jobs').select('*').order('created_at', {ascending:false});
-  if(jobsAdminFilter !== 'all') query = query.eq('category', jobsAdminFilter);
-  const { data, error } = await query;
-  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
-  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">No job updates available.</div>'; return; }
-  el.innerHTML = data.map(j=>`
-    <div class="list-item">
-      <div>
-        <p class="li-title">${esc(j.title)} ${j.is_active?'':' <span style="color:var(--stamp);">(Inactive)</span>'}</p>
-        <div class="li-meta"><span>${esc(j.category)}</span><span>${esc(j.sub_type)}</span>${j.organization?`<span>${esc(j.organization)}</span>`:''}</div>
-      </div>
-      <div class="li-actions">
-        <button class="btn btn-ghost btn-xs" onclick='editJob(${JSON.stringify(j).replace(/'/g,"&#39;")})'>Edit</button>
-        <button class="btn btn-ghost btn-xs" onclick="toggleJobActive('${j.id}', ${!j.is_active})">${j.is_active?'Deactivate':'Activate'}</button>
-        <button class="btn btn-danger btn-xs" onclick="deleteJob('${j.id}')">Delete</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function editJob(j){
-  editingJobId = j.id;
-  document.getElementById('jCategory').value = j.category || 'government';
-  document.getElementById('jSubtype').value = j.sub_type || 'latest_job';
-  document.getElementById('jTitle').value = j.title || '';
-  document.getElementById('jOrg').value = j.organization || '';
-  document.getElementById('jDesc').value = j.description || '';
-  document.getElementById('jLink').value = j.apply_link || '';
-  document.getElementById('jFeeGeneral').value = j.fee_general || '';
-  document.getElementById('jFeeScSt').value = j.fee_sc_st || '';
-  document.getElementById('jFeePh').value = j.fee_ph || '';
-  document.getElementById('jAgeLimit').value = j.age_limit || '';
-  document.getElementById('jTotalPosts').value = j.total_posts || '';
-  document.getElementById('jEligibility').value = j.eligibility || '';
-  document.getElementById('jLinkNotification').value = j.link_notification || '';
-  document.getElementById('jLinkSyllabus').value = j.link_syllabus || '';
-  document.getElementById('jLinkAdmitCard').value = j.link_admit_card || '';
-  document.getElementById('jLinkResult').value = j.link_result || '';
-  document.getElementById('jLinkWebsite').value = j.link_official_website || '';
-
-  const dateMap = {};
-  (j.important_dates || '').split('\n').filter(Boolean).forEach(line=>{
-    const [k,...rest] = line.split(':'); dateMap[k.trim()] = rest.join(':').trim();
-  });
-  document.getElementById('jDateStart').value = dateMap['Application Start'] || '';
-  document.getElementById('jDateLastApply').value = dateMap['Last Date to Apply'] || '';
-  document.getElementById('jDateFee').value = dateMap['Last Date (Fee)'] || '';
-  document.getElementById('jDateCorrection').value = dateMap['Correction Date'] || '';
-  document.getElementById('jDateExam').value = dateMap['Exam Date'] || '';
-  document.getElementById('jDateAdmit').value = dateMap['Admit Card'] || '';
-
-  clearCustomFields();
-  (j.extra_fields || []).forEach(f=> addCustomFieldRow(f.label, f.value));
-
-  const box = document.getElementById('jobExtraFields');
-  box.style.display = 'block';
-  document.getElementById('jobExtraToggleBtn').textContent = '− Hide Additional Details';
-
-  const submitBtn = document.querySelector('#view-jobs .panel-card .btn-primary');
-  submitBtn.textContent = 'Update Job';
-  document.getElementById('jobCancelEditBtn').style.display = 'inline-block';
-
-  document.querySelector('#view-jobs .panel-card').scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-function cancelJobEdit(){
-  editingJobId = null;
-  ['jTitle','jOrg','jDesc','jLink','jDateStart','jDateLastApply','jDateFee','jDateCorrection','jDateExam','jDateAdmit',
-   'jFeeGeneral','jFeeScSt','jFeePh','jAgeLimit','jTotalPosts','jEligibility',
-   'jLinkNotification','jLinkSyllabus','jLinkAdmitCard','jLinkResult','jLinkWebsite'].forEach(id=>{
-    const el = document.getElementById(id); if(el) el.value = '';
-  });
-  document.getElementById('jNotificationFile').value = '';
-  document.getElementById('jSyllabusFile').value = '';
-  clearCustomFields();
-  document.querySelector('#view-jobs .panel-card .btn-primary').textContent = 'Publish';
-  document.getElementById('jobCancelEditBtn').style.display = 'none';
-}
-
-async function toggleJobActive(id, val){
-  await sb.from('jobs').update({ is_active: val }).eq('id', id);
-  loadJobsAdmin();
-}
-async function deleteJob(id){
-  if(!confirm('Delete this job?')) return;
-  await sb.from('jobs').delete().eq('id', id);
-  toast('Deleted successfully.');
-  loadJobsAdmin();
+async function updateUnreadBadge(){
+  const badge = document.getElementById('noticeBadge');
+  if(!currentUser){ badge.style.display='none'; return; }
+  const { data: all } = await sb.from('notices').select('id').eq('is_active', true);
+  const { data: reads } = await sb.from('notice_reads').select('notice_id').eq('user_id', currentUser.id);
+  const readIds = new Set((reads||[]).map(r=>r.notice_id));
+  const unread = (all||[]).filter(n=>!readIds.has(n.id)).length;
+  if(unread > 0){ badge.style.display='flex'; badge.textContent = unread; } else { badge.style.display='none'; }
 }
 
 /* ================= NOTES ================= */
-function setNoteCategoryForm(cat){
-  noteCategoryForm = cat;
-  document.getElementById('catAcademicBtn').classList.toggle('active', cat==='academic');
-  document.getElementById('catCompetitiveBtn').classList.toggle('active', cat==='competitive');
+function setNotesCategory(cat){
+  notesCategory = cat;
+  document.querySelectorAll('#notesCatChips .chip').forEach(c=>c.classList.toggle('sel', c.dataset.c===cat));
+  loadNotes();
 }
-async function submitNote(){
-  const subject = document.getElementById('ntSubject').value.trim();
-  const class_or_exam = document.getElementById('ntClassExam').value.trim();
-  const topic = document.getElementById('ntTopic').value.trim();
-  const access_mode = document.getElementById('ntAccessMode').value;
-  const fileInput = document.getElementById('ntFile');
-  const errEl = document.getElementById('ntError'); errEl.textContent='';
-  if(!subject || !class_or_exam || !topic){ errEl.textContent = 'Subject, Class/Exam, and Topic are required.'; return; }
-  const file = fileInput.files[0];
-  if(!file){ errEl.textContent = 'PDF file chunein.'; return; }
-  if(file.size > 20*1024*1024){ errEl.textContent = 'File must not exceed 20MB.'; return; }
 
-  document.getElementById('ntUploadBtn').disabled = true;
-  toast('Uploading file…');
-  const filePath = `${noteCategoryForm}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-  const { error: upErr } = await sb.storage.from(NOTES_BUCKET).upload(filePath, file, { upsert: false });
-  if(upErr){ errEl.textContent = 'Upload fail: ' + upErr.message; document.getElementById('ntUploadBtn').disabled = false; return; }
-
-  const { error: dbErr } = await sb.from('notes').insert({
-    category: noteCategoryForm, subject, topic, class_or_exam, access_mode,
-    file_path: filePath, file_name: file.name, uploaded_by: currentUser.id
-  });
-  document.getElementById('ntUploadBtn').disabled = false;
-  if(dbErr){ errEl.textContent = 'Save fail: ' + dbErr.message; return; }
-
-  document.getElementById('ntSubject').value=''; document.getElementById('ntClassExam').value='';
-  document.getElementById('ntTopic').value=''; fileInput.value='';
-  toast('Note uploaded successfully.');
-  loadNotesAdmin();
-}
-async function loadNotesAdmin(){
-  const el = document.getElementById('notesAdminList');
-  const { data, error } = await sb.from('notes').select('*').order('created_at', {ascending:false});
+async function loadNotes(){
+  const el = document.getElementById('notesList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('notes').select('*').eq('category', notesCategory).order('created_at', {ascending:false});
   if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
-  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">No study material uploaded yet.</div>'; return; }
+  if(!data || !data.length){
+    el.innerHTML = `<div class="empty-note" style="padding:50px 20px;">
+      <div style="font-size:32px; margin-bottom:10px;">🚧</div>
+      <p style="font-size:15px; font-weight:600; color:var(--text); margin:0 0 6px;">Coming Soon</p>
+      <p style="font-size:12.5px; margin:0;">${notesCategory==='academic'?'Academic':'Competitive'} notes are being added. Check back soon!</p>
+    </div>`;
+    return;
+  }
   el.innerHTML = data.map(n=>`
-    <div class="list-item">
-      <div>
-        <p class="li-title">Topic: ${esc(n.topic)}</p>
-        <div class="li-meta"><span>${esc(n.category)}</span><span>Subject: ${esc(n.subject)}</span><span>${esc(n.class_or_exam)}</span><span>${accessLabel(n.access_mode)}</span></div>
+    <div class="item-card">
+      <div class="item-icon" style="background:#16324a; color:#6fb8e8;">📄</div>
+      <div class="item-body">
+        <p class="item-title">Topic: ${esc(n.topic)}</p>
+        <div class="item-meta"><span>Subject: ${esc(n.subject)}</span><span>${esc(n.class_or_exam)}</span><span>${accessLabel(n.access_mode)}</span></div>
       </div>
-      <div class="li-actions">
-        <button class="btn btn-danger btn-xs" onclick="deleteNote('${n.id}','${esc(n.file_path)}')">Delete</button>
+      <div class="item-actions">
+        ${noteActionButtons(n)}
       </div>
     </div>
   `).join('');
 }
-async function deleteNote(id, filePath){
-  if(!confirm('Delete this note? The file will also be removed.')) return;
-  await sb.storage.from(NOTES_BUCKET).remove([filePath]);
-  await sb.from('notes').delete().eq('id', id);
-  toast('Note deleted successfully.');
-  loadNotesAdmin();
+
+function accessLabel(mode){
+  if(mode==='only_read') return 'Read Only';
+  if(mode==='premium_download') return 'Premium';
+  return 'Free Download';
 }
 
-checkExistingSession();
+function noteActionButtons(n){
+  const readBtn = `<button class="btn-sm btn-ghost-sm" onclick="openNoteReader('${esc(n.file_path)}')">Read</button>`;
+  const isFullAccess = currentProfile?.plan === 'full_access';
+
+  if(n.access_mode === 'only_read'){
+    if(isFullAccess){
+      return readBtn + `<button class="btn-sm btn-primary-sm" onclick="openNoteDownload('${esc(n.file_path)}','${esc(n.file_name)}')">Download</button>`;
+    }
+    return readBtn;
+  }
+  if(n.access_mode === 'premium_download'){
+    const hasAccess = currentProfile?.plan === 'notes_only' || isFullAccess;
+    const dlBtn = hasAccess
+      ? `<button class="btn-sm btn-primary-sm" onclick="openNoteDownload('${esc(n.file_path)}','${esc(n.file_name)}')">Download</button>`
+      : `<button class="btn-sm btn-ghost-sm" style="opacity:.6;" onclick="toast('This is a Premium note. Upgrade your plan to download.')">🔒 Download</button>`;
+    return readBtn + dlBtn;
+  }
+  // download_read (free download)
+  const dlBtn = `<button class="btn-sm btn-primary-sm" onclick="openNoteDownload('${esc(n.file_path)}','${esc(n.file_name)}')">Download</button>`;
+  return readBtn + dlBtn;
+}
+
+function notePublicUrl(path){
+  const { data } = sb.storage.from(NOTES_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function openNoteReader(path){
+  if(!currentUser){ toast('Please login to access this feature.'); openModal('authModal'); return; }
+  const url = notePublicUrl(path);
+  showView('reader');
+  await openReader(url);
+}
+
+async function openNoteDownload(path, fileName){
+  if(!currentUser){ toast('Please login to access this feature.'); openModal('authModal'); return; }
+  const url = notePublicUrl(path);
+  toast('Preparing your file…');
+  await downloadWatermarked(url, fileName || 'note.pdf');
+}
+
+async function downloadWatermarked(url, fileName){
+  try{
+    const bytes = await fetch(url).then(r=>r.arrayBuffer());
+    const { PDFDocument, StandardFonts, rgb, degrees } = PDFLib;
+    const pdfDoc = await PDFDocument.load(bytes);
+    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const wmText = `VIDHYAPATH • ${currentProfile?.full_name || ''} • ${currentProfile?.phone || ''}`;
+    pdfDoc.getPages().forEach(page=>{
+      const { width, height } = page.getSize();
+      page.drawText(wmText, {
+        x: width/2 - 220, y: height/2, size: 16, font,
+        color: rgb(0.7,0.7,0.7), opacity: 0.35, rotate: degrees(35)
+      });
+    });
+    const outBytes = await pdfDoc.save();
+    const blob = new Blob([outBytes], { type:'application/pdf' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.click();
+    toast('Download started.');
+  }catch(e){
+    toast('Download error: ' + e.message);
+  }
+}
+
+async function openReader(url){
+  const canvas = document.getElementById('pdfCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 600; canvas.height = 200;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#93a7c4'; ctx.font = '14px Inter, sans-serif';
+  ctx.fillText('Loading document…', 20, 100);
+  try{
+    const bytes = await fetch(url).then(r=>{
+      if(!r.ok) throw new Error('File fetch failed (status ' + r.status + ')');
+      return r.arrayBuffer();
+    });
+    const loadingTask = pdfjsLib.getDocument({ data: bytes, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', cMapPacked: true });
+    readerDoc = await loadingTask.promise;
+    readerNumPages = readerDoc.numPages;
+    readerPage = 1;
+    await renderReaderPage();
+  }catch(e){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#a8382f'; ctx.font = '14px Inter, sans-serif';
+    ctx.fillText('Could not load document: ' + e.message, 20, 100);
+    toast('Could not load document: ' + e.message);
+  }
+}
+
+function closeReader(){
+  readerDoc = null;
+  showView('notes');
+}
+
+async function renderReaderPage(){
+  if(!readerDoc) return;
+  const page = await readerDoc.getPage(readerPage);
+  const viewport = page.getViewport({ scale: 1.4 });
+  const canvas = document.getElementById('pdfCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = viewport.width; canvas.height = viewport.height;
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  document.getElementById('readerPageLabel').textContent = readerPage + ' / ' + readerNumPages;
+  document.getElementById('readerJumpInput').max = readerNumPages;
+  document.getElementById('readerJumpInput').placeholder = '1-' + readerNumPages;
+  document.getElementById('readerPrevBtn').disabled = readerPage <= 1;
+  document.getElementById('readerNextBtn').disabled = readerPage >= readerNumPages;
+  document.querySelector('.reader-fullscreen').scrollTo({top:0, behavior:'instant'});
+}
+
+function changeReaderPage(delta){
+  const next = readerPage + delta;
+  if(next < 1 || next > readerNumPages) return;
+  readerPage = next;
+  renderReaderPage();
+}
+
+function jumpToReaderPage(){
+  const input = document.getElementById('readerJumpInput');
+  const n = parseInt(input.value, 10);
+  if(!n || n < 1 || n > readerNumPages){
+    toast('Please enter a page between 1 and ' + readerNumPages + '.');
+    return;
+  }
+  readerPage = n;
+  renderReaderPage();
+  input.value = '';
+}
+
+/* ================= JOBS ================= */
+function setJobsCategory(cat){
+  jobsCategory = cat;
+  document.querySelectorAll('#view-jobs .chiprow:nth-of-type(1) .chip').forEach(c=>c.classList.toggle('sel', c.dataset.c===cat));
+  loadJobs();
+}
+function setJobsSubtype(s){
+  jobsSubtype = s;
+  document.querySelectorAll('#view-jobs .chiprow:nth-of-type(2) .chip').forEach(c=>c.classList.toggle('sel', c.dataset.s===s));
+  loadJobs();
+}
+async function loadJobs(){
+  const el = document.getElementById('jobsList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('jobs').select('*').eq('is_active', true).eq('category', jobsCategory).eq('sub_type', jobsSubtype).order('created_at', {ascending:false});
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">No updates available in this category.</div>'; return; }
+  el.innerHTML = data.map(j=>jobCardHtml(j)).join('');
+}
+
+function jobCardHtml(j){
+  const hasExtra = j.important_dates || j.eligibility || j.age_limit || j.total_posts || j.fee_general || j.fee_sc_st || j.fee_ph || (j.extra_fields && j.extra_fields.length);
+  const links = [
+    j.apply_link ? {label:'Apply Online', url:j.apply_link, primary:true} : null,
+    j.link_notification ? {label:'Notification', url:j.link_notification} : null,
+    j.link_syllabus ? {label:'Syllabus', url:j.link_syllabus} : null,
+    j.link_admit_card ? {label:'Admit Card', url:j.link_admit_card} : null,
+    j.link_result ? {label:'Result', url:j.link_result} : null,
+    j.link_official_website ? {label:'Official Website', url:j.link_official_website} : null,
+  ].filter(Boolean);
+
+  const detailRows = [];
+  if(j.important_dates) detailRows.push(...j.important_dates.split('\n').filter(Boolean).map(line=>{
+    const [k,...rest] = line.split(':'); return `<div class="job-detail-row"><span>${esc(k)}</span><b>${esc(rest.join(':').trim())}</b></div>`;
+  }));
+  if(j.fee_general) detailRows.push(`<div class="job-detail-row"><span>Fee (General/OBC)</span><b>${esc(j.fee_general)}</b></div>`);
+  if(j.fee_sc_st) detailRows.push(`<div class="job-detail-row"><span>Fee (SC/ST)</span><b>${esc(j.fee_sc_st)}</b></div>`);
+  if(j.fee_ph) detailRows.push(`<div class="job-detail-row"><span>Fee (PH)</span><b>${esc(j.fee_ph)}</b></div>`);
+  if(j.age_limit) detailRows.push(`<div class="job-detail-row"><span>Age Limit</span><b>${esc(j.age_limit)}</b></div>`);
+  if(j.total_posts) detailRows.push(`<div class="job-detail-row"><span>Total Posts</span><b>${esc(j.total_posts)}</b></div>`);
+  if(j.eligibility) detailRows.push(`<div class="job-detail-row"><span>Eligibility</span><b>${esc(j.eligibility)}</b></div>`);
+  (j.extra_fields || []).forEach(f=>{
+    detailRows.push(`<div class="job-detail-row"><span>${esc(f.label)}</span><b>${esc(f.value)}</b></div>`);
+  });
+
+  const uid = 'jd_' + j.id;
+  return `
+    <div class="item-card" style="flex-direction:column; align-items:stretch;">
+      <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+        <div class="item-icon" style="background:#3a2416; color:#e8a262;">💼</div>
+        <div class="item-body">
+          <p class="item-title">${esc(j.title)}</p>
+          <div class="item-meta">${j.organization?`<span>${esc(j.organization)}</span>`:''}</div>
+          ${j.description?`<p class="item-desc">${esc(j.description)}</p>`:''}
+        </div>
+        ${hasExtra ? `<button class="btn-sm btn-ghost-sm" onclick="toggleJobDetails('${uid}')">Details ▾</button>` : ''}
+      </div>
+      ${hasExtra ? `<div class="job-details" id="${uid}" style="display:none;">${detailRows.join('')}</div>` : ''}
+      ${links.length ? `<div class="job-links">${links.map(l=>`<button class="btn-sm ${l.primary?'btn-primary-sm':'btn-ghost-sm'}" onclick="window.open('${esc(l.url)}','_blank')">${l.label}</button>`).join('')}</div>` : ''}
+    </div>
+  `;
+}
+
+function toggleJobDetails(id){
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+/* ================= LIVE CLASSES (video_links) ================= */
+function setLiveTab(t){
+  liveTab = t;
+  document.querySelectorAll('#view-live .chiprow .chip').forEach(c=>c.classList.toggle('sel', c.dataset.lv===t));
+  loadVideos();
+}
+async function loadVideos(){
+  const el = document.getElementById('liveList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('video_links').select('*').order('scheduled_at', {ascending: liveTab==='upcoming'});
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+  const now = new Date();
+  let list = (data||[]).filter(v=>{
+    const sch = v.scheduled_at ? new Date(v.scheduled_at) : null;
+    const isUpcoming = v.is_live || !sch || sch >= now;
+    return liveTab==='upcoming' ? isUpcoming : !isUpcoming;
+  });
+  if(!list.length){ el.innerHTML = '<div class="empty-note">No content available in this section.</div>'; return; }
+  el.innerHTML = list.map(v=>{
+    const tag = v.is_live ? '<span class="pill-tag tag-live">LIVE</span>' : (liveTab==='upcoming' ? '<span class="pill-tag tag-upcoming">UPCOMING</span>' : '<span class="pill-tag tag-past">RECORDED</span>');
+    return `
+    <div class="item-card">
+      <div class="item-icon" style="background:#3a1f2a; color:#e87ba0;">🎥</div>
+      <div class="item-body">
+        <p class="item-title">${esc(v.title)} ${tag}</p>
+        <div class="item-meta">${v.subject?`<span>${esc(v.subject)}</span>`:''}${v.exam_category?`<span>${esc(v.exam_category)}</span>`:''}${v.scheduled_at?`<span>${new Date(v.scheduled_at).toLocaleString('en-IN')}</span>`:''}</div>
+        ${v.description?`<p class="item-desc">${esc(v.description)}</p>`:''}
+      </div>
+      <div class="item-actions">
+        <button class="btn-sm btn-primary-sm" onclick="window.open('${esc(v.youtube_url)}','_blank')">Dekhein</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ================= INIT ================= */
+async function init(){
+  await loadProfile();
+  refreshAuthUI();
+  await loadNoticesHome();
+  await loadReachStats();
+  sb.auth.onAuthStateChange((event, session)=>{
+    currentUser = session?.user || null;
+    if(currentUser) loadProfile().then(refreshAuthUI);
+    else { currentProfile = null; refreshAuthUI(); }
+  });
+}
+init();
 </script>
 </body>
 </html>
