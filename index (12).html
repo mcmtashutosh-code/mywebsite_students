@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Vidhyapath — Apni Manzil Ka Raasta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<style>
+:root{
+  --bg:#0a1220; --bg-2:#0d1a2b; --panel:#101f33; --line:#1e3552; --line-soft:#152943;
+  --paper:#f4ecd8; --paper-2:#ece1c8; --ink:#22314a; --ink-dim:#5a6b85;
+  --stamp:#a8382f; --stamp-dark:#7e2620; --seal:#1f7a5c; --gold:#c9a227;
+  --text:#e9eef6; --text-dim:#93a7c4; --text-mute:#5c7291;
+  --radius:16px; --radius-sm:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(circle at 12% -8%, #12314f 0%, transparent 42%),
+    radial-gradient(circle at 100% 6%, #0f2438 0%, transparent 38%),
+    var(--bg);
+  min-height:100vh; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif;
+  color:var(--text); -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.serif{font-family:'Fraunces','Noto Sans Devanagari',serif;}
+a{color:inherit;}
+.wrap{max-width:1080px; margin:0 auto; padding:0 18px 60px;}
+img{max-width:100%;}
+
+/* ---------- Top strip / Nav ---------- */
+.topstrip{height:3px; background:linear-gradient(90deg,var(--seal),var(--gold),var(--seal)); background-size:200% 100%; animation:flow 6s linear infinite;}
+@keyframes flow{0%{background-position:0 0;}100%{background-position:200% 0;}}
+@media (prefers-reduced-motion:reduce){.topstrip{animation:none;}}
+
+.navbar{position:sticky; top:0; z-index:50; background:rgba(10,18,32,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-soft);}
+.navbar-inner{max-width:1080px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; gap:14px;}
+.brand{display:flex; align-items:center; gap:10px; cursor:pointer;}
+.brand-seal{width:36px; height:36px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--seal), #0e4632); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:16px; color:#e8f7ef; border:1.5px solid #2fa578;}
+.brand-name{font-size:19px; font-weight:600; letter-spacing:.01em;}
+.brand-name b{color:var(--gold); font-weight:700;}
+
+.pillnav{display:flex; gap:4px; background:var(--panel); border:1px solid var(--line-soft); border-radius:999px; padding:4px; overflow-x:auto; scrollbar-width:none;}
+.pillnav::-webkit-scrollbar{display:none;}
+.pillnav button{border:none; background:none; color:var(--text-dim); font-family:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:999px; cursor:pointer; white-space:nowrap;}
+.pillnav button.active{background:var(--seal); color:#eafff4;}
+.nav-right{display:flex; align-items:center; gap:8px;}
+.icon-btn{position:relative; background:var(--panel); border:1px solid var(--line-soft); color:var(--text-dim); width:38px; height:38px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px;}
+.icon-btn:hover{border-color:var(--seal);}
+.badge-dot{position:absolute; top:-4px; right:-4px; background:var(--stamp); color:#fff; font-size:10px; font-weight:700; min-width:16px; height:16px; border-radius:8px; display:flex; align-items:center; justify-content:center; padding:0 3px;}
+.btn-login{background:var(--seal); color:#eafff4; border:none; border-radius:10px; padding:9px 16px; font-weight:600; font-size:13px; cursor:pointer; font-family:inherit;}
+
+/* mobile nav collapse */
+@media (max-width:760px){
+  .navbar-inner{flex-wrap:wrap;}
+  .pillnav{order:3; width:100%;}
+}
+
+/* ---------- Hero: Admit Card / Ledger stub ---------- */
+.hero{padding:44px 0 30px;}
+.admit-card{background:linear-gradient(180deg,var(--paper),var(--paper-2)); color:var(--ink); border-radius:20px; padding:0; overflow:hidden; box-shadow:0 20px 50px -20px rgba(0,0,0,.6); position:relative; display:flex; flex-wrap:wrap;}
+.admit-main{flex:1 1 340px; padding:32px 34px 30px; position:relative;}
+.admit-eyebrow{font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--stamp);}
+.admit-title{font-size:clamp(28px,4.4vw,42px); font-weight:700; line-height:1.08; margin:10px 0 12px;}
+.admit-sub{font-size:15px; color:var(--ink-dim); max-width:460px; line-height:1.6; margin:0 0 24px;}
+.admit-cta{display:flex; gap:12px; flex-wrap:wrap;}
+.btn-stamp{background:var(--stamp); color:#fff5f2; border:none; padding:13px 24px; border-radius:10px; font-weight:700; font-size:14.5px; cursor:pointer; font-family:inherit; box-shadow:0 8px 18px -8px rgba(168,56,47,.6);}
+.btn-outline-ink{background:transparent; color:var(--ink); border:1.5px solid var(--ink); padding:12px 22px; border-radius:10px; font-weight:600; font-size:14.5px; cursor:pointer; font-family:inherit;}
+.admit-stub{flex:0 0 240px; border-left:2px dashed #c7bb9c; padding:28px 26px; display:flex; flex-direction:column; justify-content:center; gap:10px; position:relative; background:rgba(255,255,255,.25);}
+.stub-row{display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-dim); border-bottom:1px dotted #c7bb9c; padding-bottom:6px;}
+.stub-row b{color:var(--ink); font-size:12.5px;}
+.seal-stamp{position:absolute; right:18px; bottom:16px; width:78px; height:78px; border-radius:50%; border:2.5px solid var(--seal); color:var(--seal); display:flex; align-items:center; justify-content:center; text-align:center; font-family:'Fraunces',serif; font-weight:700; font-size:10px; line-height:1.2; transform:rotate(-14deg); opacity:.75;}
+@media (max-width:600px){.seal-stamp{display:none;}}
+
+/* ---------- Sections ---------- */
+.section{padding:38px 0 8px;}
+.section-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; gap:12px; flex-wrap:wrap;}
+.section-title{font-size:24px; font-weight:600; margin:0;}
+.section-title .no{color:var(--gold); font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-right:8px;}
+.section-sub{font-size:13px; color:var(--text-mute); margin:2px 0 0;}
+.see-all{font-size:12.5px; font-weight:600; color:var(--text-dim); background:none; border:1px solid var(--line-soft); border-radius:8px; padding:8px 13px; cursor:pointer; font-family:inherit;}
+.see-all:hover{border-color:var(--seal); color:var(--seal);}
+
+.card-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px;}
+.quick-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:20px; cursor:pointer; transition:border-color .15s;}
+.quick-card:hover{border-color:var(--seal);}
+.quick-card .qi{width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:12px;}
+.quick-card h3{font-size:15.5px; margin:0 0 4px; font-family:'Inter'; font-weight:600;}
+.quick-card p{font-size:12.5px; color:var(--text-mute); margin:0; line-height:1.5;}
+
+/* ---------- Filter chips ---------- */
+.chiprow{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px;}
+.chip{padding:8px 14px; border-radius:999px; font-size:12.5px; font-weight:600; cursor:pointer; border:1px solid var(--line-soft); color:var(--text-dim); background:var(--panel); font-family:inherit;}
+.chip.sel{background:var(--seal); color:#eafff4; border-color:var(--seal);}
+
+/* ---------- Notice ---------- */
+.notice-strip{display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; margin-bottom:6px;}
+.notice-card{flex:0 0 280px; background:var(--panel); border:1px solid var(--line-soft); border-left:4px solid var(--seal); border-radius:12px; padding:14px 16px; cursor:pointer;}
+.notice-card.pr-urgent{border-left-color:var(--stamp);}
+.notice-card.pr-important{border-left-color:var(--gold);}
+.notice-card .ntag{font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-mute); display:flex; justify-content:space-between; margin-bottom:6px;}
+.notice-card .ntitle{font-size:14px; font-weight:600; margin:0 0 4px;}
+.notice-card .nmsg{font-size:12px; color:var(--text-dim); line-height:1.5; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.unread-dot{width:7px; height:7px; border-radius:50%; background:var(--stamp); display:inline-block; margin-right:5px;}
+
+/* ---------- List item cards (notes/jobs/video) ---------- */
+.item-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:16px 18px; margin-bottom:12px; display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;}
+.item-icon{width:44px; height:44px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:19px; flex:none;}
+.item-body{flex:1; min-width:180px;}
+.item-title{font-size:15px; font-weight:600; margin:0 0 4px;}
+.item-meta{font-size:11.5px; color:var(--text-mute); display:flex; gap:10px; flex-wrap:wrap; margin-bottom:6px;}
+.item-meta span{background:var(--bg-2); padding:3px 9px; border-radius:6px;}
+.item-desc{font-size:12.5px; color:var(--text-dim); line-height:1.55; margin:0;}
+.item-actions{display:flex; gap:8px; flex:none; align-self:center;}
+.btn-sm{border:none; border-radius:8px; padding:9px 15px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;}
+.btn-primary-sm{background:var(--seal); color:#eafff4;}
+.btn-ghost-sm{background:var(--bg-2); color:var(--text-dim); border:1px solid var(--line-soft);}
+.pill-tag{font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.04em;}
+.tag-live{background:var(--stamp); color:#fff;}
+.tag-upcoming{background:var(--gold); color:#241d02;}
+.tag-past{background:#2c3e50; color:var(--text-dim);}
+.empty-note{text-align:center; padding:40px 20px; color:var(--text-mute); font-size:13.5px;}
+
+/* ---------- Views ---------- */
+.view{display:none;}
+.view.active{display:block;}
+
+/* ---------- Reader (pdf.js) ---------- */
+.reader-wrap{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:16px; user-select:none;}
+.reader-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px; flex-wrap:wrap;}
+.reader-nav{display:flex; gap:8px; align-items:center;}
+#pdfCanvas{max-width:100%; border-radius:8px; display:block; margin:0 auto; box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.reader-guard{position:relative;}
+.reader-guard::after{content:"VIDHYAPATH — READ ONLY"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; color:rgba(255,255,255,.05); pointer-events:none; transform:rotate(-18deg);}
+
+/* ---------- Auth Modal ---------- */
+.modal-overlay{display:none; position:fixed; inset:0; background:rgba(5,10,20,.7); backdrop-filter:blur(3px); z-index:100; align-items:center; justify-content:center; padding:16px;}
+.modal-overlay.active{display:flex;}
+.modal-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:20px; padding:28px 26px; width:100%; max-width:400px; max-height:90vh; overflow-y:auto; position:relative;}
+.modal-card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--seal); border-radius:20px 0 0 20px;}
+.modal-close{position:absolute; right:14px; top:14px; background:none; border:none; color:var(--text-mute); font-size:20px; cursor:pointer;}
+.modal-head{text-align:center; margin-bottom:18px;}
+.modal-head h2{font-size:20px; margin:8px 0 4px;}
+.modal-head p{font-size:12.5px; color:var(--text-mute); margin:0;}
+.field-label{display:block; font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim); margin:14px 0 6px;}
+input,select,textarea{width:100%; background:var(--bg-2); color:var(--text); border:1px solid var(--line-soft); border-radius:9px; padding:12px 13px; font-size:14.5px; font-family:inherit; outline:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--seal);}
+.btn-full{width:100%; background:var(--seal); color:#eafff4; border:none; border-radius:9px; padding:13px; font-weight:700; font-size:14.5px; cursor:pointer; font-family:inherit; margin-top:18px;}
+.btn-full:disabled{opacity:.55;}
+.switch-line{text-align:center; font-size:12.5px; color:var(--text-mute); margin-top:14px;}
+.switch-line b{color:var(--seal); cursor:pointer;}
+.error-text{color:var(--stamp); font-size:12.5px; margin-top:8px; min-height:14px;}
+.auth-tabs{display:flex; background:var(--bg-2); border-radius:10px; padding:3px; margin-bottom:6px;}
+.auth-tabs button{flex:1; background:none; border:none; color:var(--text-dim); font-weight:600; font-size:13px; padding:9px; border-radius:8px; cursor:pointer; font-family:inherit;}
+.auth-tabs button.active{background:var(--seal); color:#eafff4;}
+
+.toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#101f33; border:1px solid var(--line-soft); color:var(--text); padding:12px 20px; border-radius:10px; font-size:13.5px; z-index:200; opacity:0; pointer-events:none; transition:opacity .25s;}
+.toast.show{opacity:1;}
+
+footer{text-align:center; padding:34px 18px; color:var(--text-mute); font-size:12px; border-top:1px solid var(--line-soft); margin-top:40px;}
+footer b{color:var(--gold);}
+</style>
+</head>
+<body oncontextmenu="return false;" onkeydown="if((event.ctrlKey||event.metaKey)&&['p','s','u','c'].includes(event.key.toLowerCase())){event.preventDefault();}">
+<div class="topstrip"></div>
+
+<div class="navbar">
+  <div class="navbar-inner">
+    <div class="brand" onclick="showView('home')">
+      <div class="brand-seal">वि</div>
+      <div class="brand-name"><b>Vidhya</b>path</div>
+    </div>
+    <div class="pillnav" id="pillnav">
+      <button data-v="home" class="active" onclick="showView('home')">Home</button>
+      <button data-v="notes" onclick="showView('notes')">Notes</button>
+      <button data-v="test" onclick="showView('test')">Test</button>
+      <button data-v="jobs" onclick="showView('jobs')">Jobs</button>
+      <button data-v="live" onclick="showView('live')">Live Classes</button>
+      <button data-v="about" onclick="showView('about')">About</button>
+    </div>
+    <div class="nav-right">
+      <button class="icon-btn" onclick="showView('notice')" title="Notices">🔔<span class="badge-dot" id="noticeBadge" style="display:none;">0</span></button>
+      <button class="btn-login" id="authAreaBtn" onclick="onAuthAreaClick()">Login</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ================= HOME ================= -->
+  <div class="view active" id="view-home">
+    <div class="hero">
+      <div class="admit-card">
+        <div class="admit-main">
+          <div class="admit-eyebrow">Apni Manzil Ka Raasta</div>
+          <h1 class="admit-title">Sarkari Naukri Ho Ya Board Exam — Taiyari Yahin Se.</h1>
+          <p class="admit-sub">Notes, mock tests, live classes aur naukri ki har khabar — ek hi jagah, ek hi Vidhyapath par. Aapki mehnat, hamara support.</p>
+          <div class="admit-cta">
+            <button class="btn-stamp" onclick="showView('notes')">Notes Dekho →</button>
+            <button class="btn-outline-ink" onclick="showView('test')">Test Do</button>
+          </div>
+        </div>
+        <div class="admit-stub">
+          <div class="stub-row"><span>Sanस्थान</span><b>Vidhyapath</b></div>
+          <div class="stub-row"><span>Category</span><b>All Exams</b></div>
+          <div class="stub-row"><span>Status</span><b style="color:var(--seal);">● Active</b></div>
+          <div class="stub-row" style="border-bottom:none;"><span>Valid</span><b>Always</b></div>
+          <div class="seal-stamp">VIDHYA<br>PATH<br>VERIFIED</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div><span class="section-title"><span class="no">सूचना</span>Latest Notices</span></div>
+        <button class="see-all" onclick="showView('notice')">Sab Dekho</button>
+      </div>
+      <div class="notice-strip" id="homeNoticeStrip"><div class="empty-note">Loading…</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="section-title"><span class="no">01</span>Quick Access</span></div>
+      <div class="card-grid">
+        <div class="quick-card" onclick="showView('notes')"><div class="qi" style="background:#16324a; color:#6fb8e8;">📘</div><h3>Notes</h3><p>Academic aur Competitive dono ke notes, subject-wise.</p></div>
+        <div class="quick-card" onclick="showView('test')"><div class="qi" style="background:#1f3a2e; color:#5dcaa5;">📝</div><h3>Mock Test</h3><p>CBT portal par jaakar practice aur exam do.</p></div>
+        <div class="quick-card" onclick="showView('jobs')"><div class="qi" style="background:#3a2416; color:#e8a262;">💼</div><h3>Jobs</h3><p>Sarkari aur private naukri ki latest updates.</p></div>
+        <div class="quick-card" onclick="showView('live')"><div class="qi" style="background:#3a1f2a; color:#e87ba0;">🎥</div><h3>Live Classes</h3><p>YouTube live lectures seedha yahin se.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= NOTES ================= -->
+  <div class="view" id="view-notes">
+    <div class="section">
+      <div class="section-head"><span class="section-title">Notes</span></div>
+      <div class="chiprow" id="notesCatChips">
+        <button class="chip sel" data-c="academic" onclick="setNotesCategory('academic')">Academic</button>
+        <button class="chip" data-c="competitive" onclick="setNotesCategory('competitive')">Competitive</button>
+      </div>
+      <div class="chiprow" id="notesSubFilter"></div>
+      <div id="notesList"><div class="empty-note">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ================= NOTES READER ================= -->
+  <div class="view" id="view-reader">
+    <div class="section">
+      <div class="reader-top">
+        <button class="see-all" onclick="showView('notes')">← Wapas</button>
+        <div class="reader-nav">
+          <button class="btn-sm btn-ghost-sm" onclick="changeReaderPage(-1)">‹ Prev</button>
+          <span id="readerPageLabel" style="font-size:13px; color:var(--text-dim);">1 / 1</span>
+          <button class="btn-sm btn-ghost-sm" onclick="changeReaderPage(1)">Next ›</button>
+        </div>
+      </div>
+      <div class="reader-wrap reader-guard">
+        <canvas id="pdfCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TEST ================= -->
+  <div class="view" id="view-test">
+    <div class="section">
+      <div class="section-head"><span class="section-title">Test Portal</span></div>
+      <div class="admit-card" style="display:block; padding:34px;">
+        <div class="admit-eyebrow">CBT Examination Portal</div>
+        <h2 class="admit-title" style="font-size:26px;">Practice aur Live Exam CBT Portal Par</h2>
+        <p class="admit-sub">Aapka mock test aur live exam Vidhyapath ke alag, dedicated CBT Portal par hota hai — pura secure, timer-based aur result ke saath.</p>
+        <button class="btn-stamp" onclick="window.open('https://mcmtashutosh-code.github.io/cbt-web-project/','_blank')">CBT Portal Kholein →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= JOBS ================= -->
+  <div class="view" id="view-jobs">
+    <div class="section">
+      <div class="section-head"><span class="section-title">Jobs</span></div>
+      <div class="chiprow">
+        <button class="chip sel" data-c="government" onclick="setJobsCategory('government')">Government</button>
+        <button class="chip" data-c="private" onclick="setJobsCategory('private')">Private</button>
+      </div>
+      <div class="chiprow">
+        <button class="chip sel" data-s="latest_job" onclick="setJobsSubtype('latest_job')">Latest Jobs</button>
+        <button class="chip" data-s="result" onclick="setJobsSubtype('result')">Results</button>
+        <button class="chip" data-s="admit_card" onclick="setJobsSubtype('admit_card')">Admit Card</button>
+      </div>
+      <div id="jobsList"><div class="empty-note">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ================= LIVE CLASSES ================= -->
+  <div class="view" id="view-live">
+    <div class="section">
+      <div class="section-head"><span class="section-title">Live Classes</span></div>
+      <div class="chiprow">
+        <button class="chip sel" data-lv="upcoming" onclick="setLiveTab('upcoming')">Upcoming / Live</button>
+        <button class="chip" data-lv="past" onclick="setLiveTab('past')">Past Recordings</button>
+      </div>
+      <div id="liveList"><div class="empty-note">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ================= NOTICE ================= -->
+  <div class="view" id="view-notice">
+    <div class="section">
+      <div class="section-head"><span class="section-title">All Notices</span></div>
+      <div id="noticeFullList"><div class="empty-note">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ================= ABOUT ================= -->
+  <div class="view" id="view-about">
+    <div class="section">
+      <div class="section-head"><span class="section-title">Vidhyapath Ke Baare Mein</span></div>
+      <div class="admit-card" style="display:block; padding:32px;">
+        <p class="admit-sub" style="max-width:640px;">Vidhyapath ek EdTech platform hai jo Indian exam aspirants ke liye banaya gaya hai — chahe wo SSC, Bank jaisi competitive exams ki taiyari ho, ya 9th se graduation tak ki academic padhai. Hamara maqsad hai ek hi jagah par notes, tests, live classes aur job updates dena, taaki aapki taiyari organized aur asaan ho.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PROFILE ================= -->
+  <div class="view" id="view-profile">
+    <div class="section">
+      <div class="section-head"><span class="section-title">Mera Profile</span></div>
+      <div class="admit-card" style="display:block; padding:30px;">
+        <div id="profileInfo" style="color:var(--ink);"></div>
+        <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
+          <button class="btn-outline-ink" onclick="openPasswordChange()">Password Badlein</button>
+          <button class="btn-stamp" onclick="doLogout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Made with dedication for every <b>Vidhyapath</b> student. © <span id="yr"></span></footer>
+
+<!-- ================= AUTH MODAL ================= -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('authModal')">✕</button>
+    <div class="modal-head">
+      <div class="brand-seal" style="margin:0 auto;">वि</div>
+      <h2>Vidhyapath Mein Aapka Swagat</h2>
+      <p>Apni taiyari yahin se shuru karein</p>
+    </div>
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active" onclick="setAuthTab('login')">Login</button>
+      <button id="tabSignup" onclick="setAuthTab('signup')">Signup</button>
+    </div>
+
+    <div id="loginForm">
+      <label class="field-label">Email</label>
+      <input type="email" id="loginEmail" placeholder="aapka@email.com">
+      <label class="field-label">Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••">
+      <div class="error-text" id="loginError"></div>
+      <button class="btn-full" id="loginBtn" onclick="doLogin()">Login Karein</button>
+    </div>
+
+    <div id="signupForm" style="display:none;">
+      <label class="field-label">Poora Naam</label>
+      <input type="text" id="suName" placeholder="Aapka poora naam">
+      <label class="field-label">Email</label>
+      <input type="email" id="suEmail" placeholder="aapka@email.com">
+      <label class="field-label">Mobile Number (10 digit)</label>
+      <input type="tel" id="suMobile" maxlength="10" placeholder="9876543210">
+      <label class="field-label">Exam Category</label>
+      <select id="suExamCat">
+        <option value="">— Chunein —</option>
+        <option value="SSC">SSC</option>
+        <option value="Bank">Bank</option>
+        <option value="TCS/IT">TCS / IT Jobs</option>
+        <option value="Academic-9-10">Academic (9th-10th)</option>
+        <option value="Academic-11-12">Academic (11th-12th)</option>
+        <option value="Graduation">Graduation</option>
+        <option value="Other">Other</option>
+      </select>
+      <label class="field-label">Password</label>
+      <input type="password" id="suPassword" placeholder="Kam se kam 6 characters">
+      <label class="field-label">Password Confirm Karein</label>
+      <input type="password" id="suPasswordConfirm" placeholder="Dobara password likhein">
+      <div class="error-text" id="signupError"></div>
+      <button class="btn-full" id="signupBtn" onclick="doSignup()">Account Banayein</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PASSWORD CHANGE MODAL ================= -->
+<div class="modal-overlay" id="pwModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('pwModal')">✕</button>
+    <div class="modal-head"><h2>Password Change</h2></div>
+    <label class="field-label">Naya Password</label>
+    <input type="password" id="newPw1" placeholder="Naya password">
+    <label class="field-label">Naya Password Confirm Karein</label>
+    <input type="password" id="newPw2" placeholder="Dobara likhein">
+    <div class="error-text" id="pwError"></div>
+    <button class="btn-full" onclick="submitPasswordChange()">Update Karein</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= CONFIG ================= */
+const SUPABASE_URL = 'https://iyzujwixwfydmkzmhrxo.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_4t1qso9eT9lNU_aGnS8hiQ_zX3EGBXd';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const NOTES_BUCKET = 'notes-pdfs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+let currentUser = null;
+let currentProfile = null;
+let notesCategory = 'academic';
+let jobsCategory = 'government';
+let jobsSubtype = 'latest_job';
+let liveTab = 'upcoming';
+let readerDoc = null, readerPage = 1, readerNumPages = 1;
+
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+/* ================= VIEW ROUTING ================= */
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const el = document.getElementById('view-'+name);
+  if(el) el.classList.add('active');
+  document.querySelectorAll('#pillnav button').forEach(b=>b.classList.toggle('active', b.dataset.v===name));
+  window.scrollTo({top:0, behavior:'smooth'});
+  if(name==='notes') loadNotes();
+  if(name==='jobs') loadJobs();
+  if(name==='live') loadVideos();
+  if(name==='notice') loadNoticesFull();
+  if(name==='profile') renderProfile();
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+function esc(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ================= AUTH ================= */
+function onAuthAreaClick(){
+  if(currentUser){ showView('profile'); }
+  else{ openModal('authModal'); setAuthTab('login'); }
+}
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+function setAuthTab(tab){
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabSignup').classList.toggle('active', tab==='signup');
+  document.getElementById('loginForm').style.display = tab==='login' ? 'block':'none';
+  document.getElementById('signupForm').style.display = tab==='signup' ? 'block':'none';
+}
+
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Email aur password dono bharein.'; return; }
+  document.getElementById('loginBtn').disabled = true;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  document.getElementById('loginBtn').disabled = false;
+  if(error){ errEl.textContent = 'Login fail: ' + error.message; return; }
+  currentUser = data.user;
+  await loadProfile();
+  closeModal('authModal');
+  toast('Login safal! Swagat hai, ' + (currentProfile?.full_name || ''));
+  refreshAuthUI();
+}
+
+async function doSignup(){
+  const full_name = document.getElementById('suName').value.trim();
+  const email = document.getElementById('suEmail').value.trim();
+  const mobile = document.getElementById('suMobile').value.trim();
+  const exam_category = document.getElementById('suExamCat').value;
+  const password = document.getElementById('suPassword').value;
+  const password2 = document.getElementById('suPasswordConfirm').value;
+  const errEl = document.getElementById('signupError');
+  errEl.textContent = '';
+
+  if(!full_name || !email || !mobile || !exam_category || !password){ errEl.textContent = 'Sabhi fields bharna zaroori hai.'; return; }
+  if(!/^\d{10}$/.test(mobile)){ errEl.textContent = 'Mobile number 10 digit ka hona chahiye.'; return; }
+  if(password.length < 6){ errEl.textContent = 'Password kam se kam 6 characters ka ho.'; return; }
+  if(password !== password2){ errEl.textContent = 'Dono password match nahi kar rahe.'; return; }
+
+  document.getElementById('signupBtn').disabled = true;
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { full_name, phone: mobile, exam_category, role: 'student' } }
+  });
+  document.getElementById('signupBtn').disabled = false;
+  if(error){ errEl.textContent = 'Signup fail: ' + error.message; return; }
+  toast('Account ban gaya! Ab login karein.');
+  setAuthTab('login');
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  currentUser = null; currentProfile = null;
+  refreshAuthUI();
+  showView('home');
+  toast('Logout ho gaya.');
+}
+
+async function loadProfile(){
+  const { data: sess } = await sb.auth.getSession();
+  currentUser = sess?.session?.user || null;
+  if(!currentUser) return;
+  const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if(!error) currentProfile = data;
+}
+
+function refreshAuthUI(){
+  const btn = document.getElementById('authAreaBtn');
+  btn.textContent = currentUser ? (currentProfile?.full_name?.split(' ')[0] || 'Profile') : 'Login';
+}
+
+function renderProfile(){
+  if(!currentProfile){ document.getElementById('profileInfo').innerHTML = '<p>Kripya login karein.</p>'; return; }
+  document.getElementById('profileInfo').innerHTML = `
+    <div class="stub-row"><span>Naam</span><b>${esc(currentProfile.full_name)}</b></div>
+    <div class="stub-row"><span>Email</span><b>${esc(currentProfile.email)}</b></div>
+    <div class="stub-row"><span>Mobile</span><b>${esc(currentProfile.phone||'-')}</b></div>
+    <div class="stub-row"><span>Exam Category</span><b>${esc(currentProfile.exam_category||'-')}</b></div>
+  `;
+}
+
+function openPasswordChange(){ openModal('pwModal'); }
+async function submitPasswordChange(){
+  const p1 = document.getElementById('newPw1').value;
+  const p2 = document.getElementById('newPw2').value;
+  const errEl = document.getElementById('pwError');
+  errEl.textContent = '';
+  if(p1.length < 6){ errEl.textContent = 'Kam se kam 6 characters.'; return; }
+  if(p1 !== p2){ errEl.textContent = 'Password match nahi karta.'; return; }
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  if(error){ errEl.textContent = error.message; return; }
+  closeModal('pwModal');
+  toast('Password update ho gaya.');
+}
+
+/* ================= NOTICES ================= */
+async function loadNoticesHome(){
+  const { data, error } = await sb.from('notices').select('*').eq('is_active', true).order('priority', {ascending:false}).order('created_at', {ascending:false}).limit(6);
+  const el = document.getElementById('homeNoticeStrip');
+  if(error || !data || !data.length){ el.innerHTML = '<div class="empty-note">Abhi koi notice nahi hai.</div>'; return; }
+  el.innerHTML = data.map(n=>noticeCardHtml(n)).join('');
+  updateUnreadBadge();
+}
+
+async function loadNoticesFull(){
+  const { data, error } = await sb.from('notices').select('*').eq('is_active', true).order('priority', {ascending:false}).order('created_at', {ascending:false});
+  const el = document.getElementById('noticeFullList');
+  if(error || !data || !data.length){ el.innerHTML = '<div class="empty-note">Abhi koi notice nahi hai.</div>'; return; }
+  el.innerHTML = data.map(n=>noticeCardHtml(n, true)).join('');
+  updateUnreadBadge();
+}
+
+function noticeCardHtml(n, full){
+  const pr = n.priority || 'normal';
+  return `<div class="notice-card pr-${pr}" style="${full?'flex:1 1 100%; max-width:none; margin-bottom:10px;':''}" onclick="markNoticeRead(${n.id})">
+    <div class="ntag"><span>${esc(n.notice_type||'General')}</span><span>${new Date(n.created_at).toLocaleDateString('en-IN')}</span></div>
+    <p class="ntitle">${esc(n.title||'Notice')}</p>
+    <p class="nmsg">${esc(n.message)}</p>
+  </div>`;
+}
+
+async function markNoticeRead(noticeId){
+  if(!currentUser) return;
+  await sb.from('notice_reads').upsert({ user_id: currentUser.id, notice_id: noticeId, read_at: new Date().toISOString() }, { onConflict: 'user_id,notice_id' });
+  updateUnreadBadge();
+}
+
+async function updateUnreadBadge(){
+  const badge = document.getElementById('noticeBadge');
+  if(!currentUser){ badge.style.display='none'; return; }
+  const { data: all } = await sb.from('notices').select('id').eq('is_active', true);
+  const { data: reads } = await sb.from('notice_reads').select('notice_id').eq('user_id', currentUser.id);
+  const readIds = new Set((reads||[]).map(r=>r.notice_id));
+  const unread = (all||[]).filter(n=>!readIds.has(n.id)).length;
+  if(unread > 0){ badge.style.display='flex'; badge.textContent = unread; } else { badge.style.display='none'; }
+}
+
+/* ================= NOTES ================= */
+function setNotesCategory(cat){
+  notesCategory = cat;
+  document.querySelectorAll('#notesCatChips .chip').forEach(c=>c.classList.toggle('sel', c.dataset.c===cat));
+  loadNotes();
+}
+
+async function loadNotes(){
+  const el = document.getElementById('notesList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('notes').select('*').eq('category', notesCategory).order('created_at', {ascending:false});
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">Is category mein abhi koi notes upload nahi hui hai.</div>'; return; }
+  el.innerHTML = data.map(n=>`
+    <div class="item-card">
+      <div class="item-icon" style="background:#16324a; color:#6fb8e8;">📄</div>
+      <div class="item-body">
+        <p class="item-title">${esc(n.topic)}</p>
+        <div class="item-meta"><span>${esc(n.subject)}</span><span>${esc(n.class_or_exam)}</span><span>${n.access_mode==='read_only'?'Only Read':'Download'}</span></div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-sm btn-primary-sm" onclick="openNote('${n.id}','${esc(n.file_path)}','${esc(n.file_name)}','${n.access_mode}')">${n.access_mode==='read_only'?'Padhein':'Download'}</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function notePublicUrl(path){
+  const { data } = sb.storage.from(NOTES_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function openNote(id, path, fileName, mode){
+  if(!currentUser){ toast('Pehle login karein.'); openModal('authModal'); return; }
+  const url = notePublicUrl(path);
+  if(mode === 'read_only'){
+    showView('reader');
+    await openReader(url);
+  } else {
+    toast('Download taiyar ho raha hai…');
+    await downloadWatermarked(url, fileName || 'note.pdf');
+  }
+}
+
+async function downloadWatermarked(url, fileName){
+  try{
+    const bytes = await fetch(url).then(r=>r.arrayBuffer());
+    const { PDFDocument, StandardFonts, rgb, degrees } = PDFLib;
+    const pdfDoc = await PDFDocument.load(bytes);
+    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const wmText = `VIDHYAPATH • ${currentProfile?.full_name || ''} • ${currentProfile?.phone || ''}`;
+    pdfDoc.getPages().forEach(page=>{
+      const { width, height } = page.getSize();
+      page.drawText(wmText, {
+        x: width/2 - 220, y: height/2, size: 16, font,
+        color: rgb(0.7,0.7,0.7), opacity: 0.35, rotate: degrees(35)
+      });
+    });
+    const outBytes = await pdfDoc.save();
+    const blob = new Blob([outBytes], { type:'application/pdf' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.click();
+    toast('Download shuru ho gaya.');
+  }catch(e){
+    toast('Download mein error: ' + e.message);
+  }
+}
+
+async function openReader(url){
+  const loadingTask = pdfjsLib.getDocument({ url, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', cMapPacked: true });
+  readerDoc = await loadingTask.promise;
+  readerNumPages = readerDoc.numPages;
+  readerPage = 1;
+  renderReaderPage();
+}
+
+async function renderReaderPage(){
+  if(!readerDoc) return;
+  const page = await readerDoc.getPage(readerPage);
+  const viewport = page.getViewport({ scale: 1.4 });
+  const canvas = document.getElementById('pdfCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = viewport.width; canvas.height = viewport.height;
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  document.getElementById('readerPageLabel').textContent = readerPage + ' / ' + readerNumPages;
+}
+
+function changeReaderPage(delta){
+  const next = readerPage + delta;
+  if(next < 1 || next > readerNumPages) return;
+  readerPage = next;
+  renderReaderPage();
+}
+
+/* ================= JOBS ================= */
+function setJobsCategory(cat){
+  jobsCategory = cat;
+  document.querySelectorAll('#view-jobs .chiprow:nth-of-type(1) .chip').forEach(c=>c.classList.toggle('sel', c.dataset.c===cat));
+  loadJobs();
+}
+function setJobsSubtype(s){
+  jobsSubtype = s;
+  document.querySelectorAll('#view-jobs .chiprow:nth-of-type(2) .chip').forEach(c=>c.classList.toggle('sel', c.dataset.s===s));
+  loadJobs();
+}
+async function loadJobs(){
+  const el = document.getElementById('jobsList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('jobs').select('*').eq('is_active', true).eq('category', jobsCategory).eq('sub_type', jobsSubtype).order('created_at', {ascending:false});
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">Abhi is category mein koi update nahi hai.</div>'; return; }
+  el.innerHTML = data.map(j=>`
+    <div class="item-card">
+      <div class="item-icon" style="background:#3a2416; color:#e8a262;">💼</div>
+      <div class="item-body">
+        <p class="item-title">${esc(j.title)}</p>
+        <div class="item-meta">${j.organization?`<span>${esc(j.organization)}</span>`:''}${j.important_dates?`<span>${esc(j.important_dates)}</span>`:''}</div>
+        ${j.description?`<p class="item-desc">${esc(j.description)}</p>`:''}
+      </div>
+      <div class="item-actions">
+        ${j.apply_link?`<button class="btn-sm btn-primary-sm" onclick="window.open('${esc(j.apply_link)}','_blank')">Apply / Dekhein</button>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ================= LIVE CLASSES (video_links) ================= */
+function setLiveTab(t){
+  liveTab = t;
+  document.querySelectorAll('#view-live .chiprow .chip').forEach(c=>c.classList.toggle('sel', c.dataset.lv===t));
+  loadVideos();
+}
+async function loadVideos(){
+  const el = document.getElementById('liveList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('video_links').select('*').order('scheduled_at', {ascending: liveTab==='upcoming'});
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+  const now = new Date();
+  let list = (data||[]).filter(v=>{
+    const sch = v.scheduled_at ? new Date(v.scheduled_at) : null;
+    const isUpcoming = v.is_live || !sch || sch >= now;
+    return liveTab==='upcoming' ? isUpcoming : !isUpcoming;
+  });
+  if(!list.length){ el.innerHTML = '<div class="empty-note">Is section mein abhi kuch nahi hai.</div>'; return; }
+  el.innerHTML = list.map(v=>{
+    const tag = v.is_live ? '<span class="pill-tag tag-live">LIVE</span>' : (liveTab==='upcoming' ? '<span class="pill-tag tag-upcoming">UPCOMING</span>' : '<span class="pill-tag tag-past">RECORDED</span>');
+    return `
+    <div class="item-card">
+      <div class="item-icon" style="background:#3a1f2a; color:#e87ba0;">🎥</div>
+      <div class="item-body">
+        <p class="item-title">${esc(v.title)} ${tag}</p>
+        <div class="item-meta">${v.subject?`<span>${esc(v.subject)}</span>`:''}${v.exam_category?`<span>${esc(v.exam_category)}</span>`:''}${v.scheduled_at?`<span>${new Date(v.scheduled_at).toLocaleString('en-IN')}</span>`:''}</div>
+        ${v.description?`<p class="item-desc">${esc(v.description)}</p>`:''}
+      </div>
+      <div class="item-actions">
+        <button class="btn-sm btn-primary-sm" onclick="window.open('${esc(v.youtube_url)}','_blank')">Dekhein</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ================= INIT ================= */
+async function init(){
+  await loadProfile();
+  refreshAuthUI();
+  await loadNoticesHome();
+  sb.auth.onAuthStateChange((event, session)=>{
+    currentUser = session?.user || null;
+    if(currentUser) loadProfile().then(refreshAuthUI);
+    else { currentProfile = null; refreshAuthUI(); }
+  });
+}
+init();
+</script>
+</body>
+</html>
