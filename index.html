@@ -1013,23 +1013,28 @@ async function loadVideos(){
 }
 
 /* ================= INIT ================= */
+// Registered immediately (before any awaits) so the PASSWORD_RECOVERY event
+// fired by Supabase right after page load (from a reset-password email link)
+// is never missed.
+sb.auth.onAuthStateChange((event, session)=>{
+  currentUser = session?.user || null;
+  if(event === 'PASSWORD_RECOVERY'){
+    document.getElementById('newPw1').value = '';
+    document.getElementById('newPw2').value = '';
+    document.getElementById('pwError').textContent = '';
+    openModal('pwModal');
+    toast('Please set your new password.');
+    return;
+  }
+  if(currentUser) loadProfile().then(refreshAuthUI);
+  else { currentProfile = null; refreshAuthUI(); }
+});
+
 async function init(){
   await loadProfile();
   refreshAuthUI();
   await loadNoticesHome();
   await loadReachStats();
-  sb.auth.onAuthStateChange((event, session)=>{
-    currentUser = session?.user || null;
-    if(event === 'PASSWORD_RECOVERY'){
-      document.getElementById('newPw1').value = '';
-      document.getElementById('newPw2').value = '';
-      document.getElementById('pwError').textContent = '';
-      openModal('pwModal');
-      toast('Please set your new password.');
-    }
-    if(currentUser) loadProfile().then(refreshAuthUI);
-    else { currentProfile = null; refreshAuthUI(); }
-  });
 }
 init();
 </script>
