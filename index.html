@@ -181,6 +181,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--seal);}
 .pw-toggle{position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-mute); cursor:pointer; font-size:16px; padding:4px; line-height:1;}
 .pw-toggle:hover{color:var(--seal);}
 .error-text{color:var(--stamp); font-size:12.5px; margin-top:8px; min-height:14px;}
+.forgot-pw-link{text-align:right; font-size:12px; font-weight:600; color:var(--seal); cursor:pointer; margin-top:8px;}
+.forgot-pw-link:hover{text-decoration:underline;}
+.modal-sub{font-size:13px; color:var(--text-mute); margin:-6px 0 4px; text-align:center;}
 .auth-tabs{display:flex; background:var(--bg-2); border-radius:10px; padding:3px; margin-bottom:6px;}
 .auth-tabs button{flex:1; background:none; border:none; color:var(--text-dim); font-weight:600; font-size:13px; padding:9px; border-radius:8px; cursor:pointer; font-family:inherit;}
 .auth-tabs button.active{background:var(--seal); color:#eafff4;}
@@ -403,6 +406,7 @@ footer b{color:var(--gold);}
       <input type="email" id="loginEmail" placeholder="your@email.com">
       <label class="field-label">Password</label>
       <div class="pw-wrap"><input type="password" id="loginPassword" placeholder="••••••••"><button type="button" class="pw-toggle" onclick="togglePw('loginPassword',this)">👁</button></div>
+      <div class="forgot-pw-link" onclick="openForgotPassword()">Forgot Password?</div>
       <div class="error-text" id="loginError"></div>
       <button class="btn-full" id="loginBtn" onclick="doLogin()">Login</button>
     </div>
@@ -432,6 +436,22 @@ footer b{color:var(--gold);}
       <div class="error-text" id="signupError"></div>
       <button class="btn-full" id="signupBtn" onclick="doSignup()">Create Account</button>
     </div>
+  </div>
+</div>
+
+<!-- ================= FORGOT PASSWORD MODAL ================= -->
+<div class="modal-overlay" id="forgotModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('forgotModal')">✕</button>
+    <div class="modal-head">
+      <div class="brand-seal" style="margin:0 auto;">वि</div>
+      <h2>Reset Password</h2>
+      <p class="modal-sub">Enter your registered email — we'll send you a reset link</p>
+    </div>
+    <label class="field-label">Email</label>
+    <input type="email" id="forgotEmail" placeholder="your@email.com">
+    <div class="error-text" id="forgotError"></div>
+    <button class="btn-full" id="forgotBtn" onclick="sendResetLink()">Send Reset Link</button>
   </div>
 </div>
 
@@ -577,6 +597,28 @@ async function doSignup(){
   if(error){ errEl.textContent = 'Signup fail: ' + error.message; return; }
   toast('Registration successful. Please login now.');
   setAuthTab('login');
+}
+
+function openForgotPassword(){
+  closeModal('authModal');
+  document.getElementById('forgotEmail').value = '';
+  document.getElementById('forgotError').textContent = '';
+  openModal('forgotModal');
+}
+
+async function sendResetLink(){
+  const email = document.getElementById('forgotEmail').value.trim();
+  const errEl = document.getElementById('forgotError');
+  errEl.textContent = '';
+  if(!email){ errEl.textContent = 'Please enter your registered email.'; return; }
+  document.getElementById('forgotBtn').disabled = true;
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  document.getElementById('forgotBtn').disabled = false;
+  if(error){ errEl.textContent = error.message; return; }
+  closeModal('forgotModal');
+  toast('Password reset link sent. Please check your email inbox.');
 }
 
 async function doLogout(){
@@ -978,6 +1020,13 @@ async function init(){
   await loadReachStats();
   sb.auth.onAuthStateChange((event, session)=>{
     currentUser = session?.user || null;
+    if(event === 'PASSWORD_RECOVERY'){
+      document.getElementById('newPw1').value = '';
+      document.getElementById('newPw2').value = '';
+      document.getElementById('pwError').textContent = '';
+      openModal('pwModal');
+      toast('Please set your new password.');
+    }
     if(currentUser) loadProfile().then(refreshAuthUI);
     else { currentProfile = null; refreshAuthUI(); }
   });
