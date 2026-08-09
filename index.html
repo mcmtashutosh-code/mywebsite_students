@@ -556,16 +556,68 @@ function setAuthTab(tab){
   document.getElementById('signupForm').style.display = tab==='signup' ? 'block':'none';
 }
 
+/* ================= LOGIN LOCKOUT (anti-brute-force, client-side) ================= */
+const LOCKOUT_MAX_ATTEMPTS = 3;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+function lockoutKey(scope, email){ return 'lockout_'+scope+'_'+(email||'').toLowerCase(); }
+function getLockoutState(scope, email){
+  try{
+    const raw = localStorage.getItem(lockoutKey(scope, email));
+    return raw ? JSON.parse(raw) : { count:0, lockedUntil:0 };
+  }catch(e){ return { count:0, lockedUntil:0 }; }
+}
+function setLockoutState(scope, email, state){
+  try{ localStorage.setItem(lockoutKey(scope, email), JSON.stringify(state)); }catch(e){}
+}
+function clearLockoutState(scope, email){
+  try{ localStorage.removeItem(lockoutKey(scope, email)); }catch(e){}
+}
+// Returns null if login is allowed, or a message string if currently locked out.
+function checkLockout(scope, email){
+  const st = getLockoutState(scope, email);
+  if(st.lockedUntil && Date.now() < st.lockedUntil){
+    const secsLeft = Math.ceil((st.lockedUntil - Date.now())/1000);
+    const m = Math.floor(secsLeft/60), s = secsLeft%60;
+    return `Too many failed attempts. Try again in ${m}:${s.toString().padStart(2,'0')}.`;
+  }
+  if(st.lockedUntil && Date.now() >= st.lockedUntil){
+    clearLockoutState(scope, email); // lock expired, reset
+  }
+  return null;
+}
+// Call after a failed login attempt. Returns a warning/lock message to show.
+function recordFailedAttempt(scope, email){
+  const st = getLockoutState(scope, email);
+  st.count = (st.count || 0) + 1;
+  if(st.count >= LOCKOUT_MAX_ATTEMPTS){
+    st.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+    st.count = 0;
+    setLockoutState(scope, email, st);
+    return `Too many failed attempts. Login locked for 5 minutes.`;
+  }
+  setLockoutState(scope, email, st);
+  const remaining = LOCKOUT_MAX_ATTEMPTS - st.count;
+  return `Incorrect password. ${remaining} attempt${remaining===1?'':'s'} left before temporary lock.`;
+}
+
 async function doLogin(){
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
   const errEl = document.getElementById('loginError');
   errEl.textContent = '';
   if(!email || !password){ errEl.textContent = 'Please enter both email and password.'; return; }
+
+  const lockMsg = checkLockout('student', email);
+  if(lockMsg){ errEl.textContent = lockMsg; return; }
+
   document.getElementById('loginBtn').disabled = true;
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   document.getElementById('loginBtn').disabled = false;
-  if(error){ errEl.textContent = 'Login fail: ' + error.message; return; }
+  if(error){
+    errEl.textContent = recordFailedAttempt('student', email);
+    return;
+  }
+  clearLockoutState('student', email);
   currentUser = data.user;
   await loadProfile();
   closeModal('authModal');
