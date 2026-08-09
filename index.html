@@ -160,6 +160,25 @@ img{max-width:100%;}
 .reader-guard{position:relative;}
 .reader-guard::after{content:"VIDHYAPATH — READ ONLY"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; color:rgba(255,255,255,.05); pointer-events:none; transform:rotate(-18deg);}
 
+.reader-zoom-group{display:flex; align-items:center; gap:4px;}
+.reader-zoom-btn{background:var(--panel); border:1px solid var(--line-soft); color:var(--text-dim); font-weight:700; font-size:15px; width:32px; height:32px; border-radius:8px; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; line-height:1;}
+.reader-zoom-btn:hover{border-color:var(--seal); color:var(--seal);}
+.reader-zoom-label{font-size:12px; color:var(--text-mute); font-weight:600; width:42px; text-align:center;}
+@media (max-width:520px){
+  .reader-topbar{flex-wrap:wrap; gap:8px; padding:10px 12px;}
+  .reader-jump{order:3; width:100%; justify-content:center;}
+  .reader-zoom-label{width:36px; font-size:11px;}
+  .reader-zoom-btn{width:28px; height:28px; font-size:13px;}
+}
+/* Kindle-style immersive fullscreen on mobile */
+@media (max-width:760px){
+  .reader-fullscreen{background:#0a1220;}
+  .reader-canvas-scroll{padding:14px 8px 40px; touch-action:pan-y pinch-zoom;}
+  .reader-side-btn{opacity:.55;}
+}
+.reader-fullscreen:fullscreen{background:#0a1220;}
+.reader-fullscreen:-webkit-full-screen{background:#0a1220;}
+
 /* ---------- Auth Modal ---------- */
 .modal-overlay{display:none; position:fixed; inset:0; background:rgba(5,10,20,.7); backdrop-filter:blur(3px); z-index:100; align-items:center; justify-content:center; padding:16px;}
 .modal-overlay.active{display:flex;}
@@ -297,10 +316,16 @@ footer b{color:var(--gold);}
           <button onclick="jumpToReaderPage()">Go</button>
           <span id="readerPageLabel" class="reader-page-label">1 / 1</span>
         </div>
+        <div class="reader-zoom-group">
+          <button class="reader-zoom-btn" onclick="zoomReader(-1)">−</button>
+          <span id="readerZoomLabel" class="reader-zoom-label">100%</span>
+          <button class="reader-zoom-btn" onclick="zoomReader(1)">+</button>
+          <button class="reader-zoom-btn" id="readerFullscreenBtn" onclick="toggleReaderFullscreen()" title="Fullscreen">⛶</button>
+        </div>
       </div>
       <button class="reader-side-btn left" id="readerPrevBtn" onclick="changeReaderPage(-1)">‹</button>
       <button class="reader-side-btn right" id="readerNextBtn" onclick="changeReaderPage(1)">›</button>
-      <div class="reader-canvas-scroll">
+      <div class="reader-canvas-scroll" id="readerCanvasScroll">
         <div class="reader-guard">
           <canvas id="pdfCanvas"></canvas>
         </div>
@@ -485,7 +510,7 @@ let notesCategory = 'academic';
 let jobsCategory = 'government';
 let jobsSubtype = 'latest_job';
 let liveTab = 'upcoming';
-let readerDoc = null, readerPage = 1, readerNumPages = 1;
+let readerDoc = null, readerPage = 1, readerNumPages = 1, readerScale = 1.4, readerBaseScale = 1.4;
 
 document.getElementById('yr').textContent = new Date().getFullYear();
 
@@ -790,16 +815,40 @@ async function updateUnreadBadge(){
 }
 
 /* ================= NOTES ================= */
+let notesExamFilter = 'all';
+
 function setNotesCategory(cat){
   notesCategory = cat;
+  notesExamFilter = 'all';
   document.querySelectorAll('#notesCatChips .chip').forEach(c=>c.classList.toggle('sel', c.dataset.c===cat));
+  if(cat === 'competitive'){ loadNotesExamChips(); }
+  else { document.getElementById('notesSubFilter').innerHTML = ''; }
+  loadNotes();
+}
+
+async function loadNotesExamChips(){
+  const box = document.getElementById('notesSubFilter');
+  const { data, error } = await sb.from('note_exam_categories').select('*').order('name');
+  const cats = (!error && data) ? data.map(c=>c.name) : [];
+  box.innerHTML = ['All', ...cats].map(name => {
+    const val = name === 'All' ? 'all' : name;
+    return `<button class="chip ${val==='all'?'sel':''}" data-ec="${esc(val)}" onclick="setNotesExamFilter('${esc(val).replace(/'/g,"\\'")}')">${esc(name)}</button>`;
+  }).join('');
+}
+function setNotesExamFilter(val){
+  notesExamFilter = val;
+  document.querySelectorAll('#notesSubFilter .chip').forEach(c=>c.classList.toggle('sel', c.dataset.ec===val));
   loadNotes();
 }
 
 async function loadNotes(){
   const el = document.getElementById('notesList');
   el.innerHTML = '<div class="empty-note">Loading…</div>';
-  const { data, error } = await sb.from('notes').select('*').eq('category', notesCategory).order('created_at', {ascending:false});
+  let query = sb.from('notes').select('*').eq('category', notesCategory).order('created_at', {ascending:false});
+  if(notesCategory === 'competitive' && notesExamFilter !== 'all'){
+    query = query.contains('exam_categories', [notesExamFilter]);
+  }
+  const { data, error } = await query;
   if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
   if(!data || !data.length){
     el.innerHTML = `<div class="empty-note" style="padding:50px 20px;">
@@ -814,7 +863,7 @@ async function loadNotes(){
       <div class="item-icon" style="background:#16324a; color:#6fb8e8;">📄</div>
       <div class="item-body">
         <p class="item-title">Topic: ${esc(n.topic)}</p>
-        <div class="item-meta"><span>Subject: ${esc(n.subject)}</span><span>${esc(n.class_or_exam)}</span><span>${accessLabel(n.access_mode)}</span></div>
+        <div class="item-meta"><span>Subject: ${esc(n.subject)}</span><span>${esc(n.class_or_exam)}</span><span>${accessLabel(n.access_mode)}</span>${(n.exam_categories||[]).map(t=>`<span>${esc(t)}</span>`).join('')}</div>
       </div>
       <div class="item-actions">
         ${noteActionButtons(n)}
@@ -912,7 +961,10 @@ async function openReader(url){
     readerDoc = await loadingTask.promise;
     readerNumPages = readerDoc.numPages;
     readerPage = 1;
+    await computeReaderBaseScale();
+    readerScale = readerBaseScale;
     await renderReaderPage();
+    setupReaderPinchZoom();
   }catch(e){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle = '#a8382f'; ctx.font = '14px Inter, sans-serif';
@@ -921,15 +973,29 @@ async function openReader(url){
   }
 }
 
+// Fits the page width to the available screen width — gives a Kindle-like
+// full-page view on mobile instead of a tiny/cropped page.
+async function computeReaderBaseScale(){
+  const page = await readerDoc.getPage(1);
+  const unscaled = page.getViewport({ scale: 1 });
+  const availWidth = document.getElementById('readerCanvasScroll').clientWidth || window.innerWidth;
+  const horizontalPadding = window.innerWidth <= 520 ? 16 : 40;
+  const fitScale = (availWidth - horizontalPadding) / unscaled.width;
+  readerBaseScale = Math.max(0.5, Math.min(fitScale, 2.2));
+}
+
 function closeReader(){
   readerDoc = null;
+  if(document.fullscreenElement || document.webkitFullscreenElement){
+    (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
+  }
   showView('notes');
 }
 
 async function renderReaderPage(){
   if(!readerDoc) return;
   const page = await readerDoc.getPage(readerPage);
-  const viewport = page.getViewport({ scale: 1.4 });
+  const viewport = page.getViewport({ scale: readerScale });
   const canvas = document.getElementById('pdfCanvas');
   const ctx = canvas.getContext('2d');
   canvas.width = viewport.width; canvas.height = viewport.height;
@@ -939,7 +1005,56 @@ async function renderReaderPage(){
   document.getElementById('readerJumpInput').placeholder = '1-' + readerNumPages;
   document.getElementById('readerPrevBtn').disabled = readerPage <= 1;
   document.getElementById('readerNextBtn').disabled = readerPage >= readerNumPages;
+  document.getElementById('readerZoomLabel').textContent = Math.round((readerScale / readerBaseScale) * 100) + '%';
   document.querySelector('.reader-fullscreen').scrollTo({top:0, behavior:'instant'});
+}
+
+function zoomReader(direction){
+  if(!readerDoc) return;
+  const step = readerBaseScale * 0.15;
+  const minScale = readerBaseScale * 0.5;
+  const maxScale = readerBaseScale * 3;
+  readerScale = Math.max(minScale, Math.min(maxScale, readerScale + direction * step));
+  renderReaderPage();
+}
+
+function toggleReaderFullscreen(){
+  const el = document.querySelector('.reader-fullscreen');
+  const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+  if(!isFs){
+    (el.requestFullscreen || el.webkitRequestFullscreen || function(){}).call(el);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
+  }
+}
+
+// Pinch-to-zoom for touch devices (mobile) — two-finger pinch on the PDF page.
+let readerPinchStartDist = null, readerPinchStartScale = null;
+function setupReaderPinchZoom(){
+  const scrollEl = document.getElementById('readerCanvasScroll');
+  if(scrollEl.dataset.pinchBound) return; // bind listeners only once
+  scrollEl.dataset.pinchBound = '1';
+  scrollEl.addEventListener('touchstart', e=>{
+    if(e.touches.length === 2){
+      readerPinchStartDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      readerPinchStartScale = readerScale;
+    }
+  }, { passive:true });
+  scrollEl.addEventListener('touchmove', e=>{
+    if(e.touches.length === 2 && readerPinchStartDist){
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      const ratio = dist / readerPinchStartDist;
+      const minScale = readerBaseScale * 0.5, maxScale = readerBaseScale * 3;
+      readerScale = Math.max(minScale, Math.min(maxScale, readerPinchStartScale * ratio));
+      e.preventDefault();
+    }
+  }, { passive:false });
+  scrollEl.addEventListener('touchend', e=>{
+    if(readerPinchStartDist && e.touches.length < 2){
+      readerPinchStartDist = null; readerPinchStartScale = null;
+      renderReaderPage();
+    }
+  }, { passive:true });
 }
 
 function changeReaderPage(delta){
