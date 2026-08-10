@@ -988,6 +988,14 @@ function accessLabel(mode){
 }
 
 function noteActionButtons(n){
+  // Not logged in — show visually locked buttons; clicking still opens the login modal.
+  if(!currentUser){
+    const lockedRead = `<button class="btn-sm btn-ghost-sm" style="opacity:.6;" onclick="openNoteReader('${esc(n.file_path)}','${n.id}','${esc(n.topic).replace(/'/g,"\\'")}')">🔒 Login to Read</button>`;
+    if(n.access_mode === 'only_read') return lockedRead;
+    const lockedDownload = `<button class="btn-sm btn-ghost-sm" style="opacity:.6;" onclick="openNoteDownload('${esc(n.file_path)}','${esc(n.file_name)}')">🔒 Login to Download</button>`;
+    return lockedRead + lockedDownload;
+  }
+
   const readBtn = `<button class="btn-sm btn-ghost-sm" onclick="openNoteReader('${esc(n.file_path)}','${n.id}','${esc(n.topic).replace(/'/g,"\\'")}')">Read</button>`;
   const isFullAccess = currentProfile?.plan === 'full_access';
 
