@@ -188,6 +188,8 @@ img{max-width:100%;}
 .reader-index-item:hover{background:var(--bg-2); color:var(--seal);}
 .reader-index-item span.pg{color:var(--text-mute); font-size:11.5px; white-space:nowrap;}
 .reader-index-empty{padding:20px 18px; color:var(--text-mute); font-size:12.5px;}
+.reader-index-bookmark{background:rgba(255,224,102,.08); border-bottom:2px solid var(--seal); font-weight:700;}
+.reader-index-bookmark:hover{background:rgba(255,224,102,.16);}
 
 /* Resume banner */
 .reader-resume-banner{display:none; position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:88; background:var(--panel); border:1px solid var(--seal); border-radius:10px; padding:10px 16px; font-size:12.5px; color:var(--text); box-shadow:0 6px 20px rgba(0,0,0,.35); cursor:pointer;}
@@ -207,6 +209,9 @@ img{max-width:100%;}
 .highlight-swatch{width:26px; height:26px; border-radius:6px; border:2px solid transparent; cursor:pointer;}
 .highlight-swatch:hover{border-color:var(--text);}
 .highlight-toolbar .hl-remove{width:26px; height:26px; border-radius:6px; border:1px solid var(--line-soft); background:var(--bg-2); color:var(--stamp); font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+
+.reader-bookmark-ribbon{display:none; position:absolute; top:0; right:14px; background:var(--seal); color:#1a1200; font-size:11.5px; font-weight:700; padding:6px 10px 8px; border-radius:0 0 6px 6px; z-index:6; box-shadow:0 3px 8px rgba(0,0,0,.3); pointer-events:none;}
+.reader-bookmark-ribbon.show{display:block;}
 
 /* ---------- Auth Modal ---------- */
 .modal-overlay{display:none; position:fixed; inset:0; background:rgba(5,10,20,.7); backdrop-filter:blur(3px); z-index:100; align-items:center; justify-content:center; padding:16px;}
@@ -368,6 +373,7 @@ footer b{color:var(--gold);}
           <canvas id="pdfCanvas"></canvas>
           <div id="textLayer" class="textLayer"></div>
           <div id="highlightLayer" class="highlightLayer"></div>
+          <div id="readerBookmarkRibbon" class="reader-bookmark-ribbon">🔖 Last Read</div>
         </div>
       </div>
       <div id="highlightToolbar" class="highlight-toolbar"></div>
@@ -553,6 +559,7 @@ let jobsSubtype = 'latest_job';
 let liveTab = 'upcoming';
 let readerDoc = null, readerPage = 1, readerNumPages = 1, readerScale = 1.4, readerBaseScale = 1.4;
 let readerNoteId = null, readerNoteTitle = '', readerTopics = [], readerHighlights = [];
+let readerLastReadPage = null;
 let readerProgressSaveTimer = null;
 
 document.getElementById('yr').textContent = new Date().getFullYear();
@@ -1019,13 +1026,14 @@ async function openReader(url){
     ]);
     readerTopics = topicsRes.data || [];
     readerHighlights = highlightsRes.data || [];
-    renderIndexList();
 
     const savedPage = progressRes.data?.last_page;
-    if(savedPage && savedPage > 1 && savedPage <= readerNumPages){
-      readerPage = savedPage;
+    readerLastReadPage = (savedPage && savedPage >= 1 && savedPage <= readerNumPages) ? savedPage : null;
+    renderIndexList();
+    if(readerLastReadPage && readerLastReadPage > 1){
+      readerPage = readerLastReadPage;
       const banner = document.getElementById('readerResumeBanner');
-      banner.textContent = `Resumed from Page ${savedPage}. Tap here to start from Page 1.`;
+      banner.textContent = `Resumed from Page ${readerLastReadPage}. Tap here to start from Page 1.`;
       banner.onclick = () => { readerPage = 1; renderReaderPage(); banner.style.display = 'none'; };
       banner.style.display = 'block';
       setTimeout(()=>{ banner.style.display = 'none'; }, 6000);
@@ -1095,6 +1103,7 @@ async function renderReaderPage(){
   document.getElementById('readerPrevBtn').disabled = readerPage <= 1;
   document.getElementById('readerNextBtn').disabled = readerPage >= readerNumPages;
   document.getElementById('readerZoomLabel').textContent = Math.round((readerScale / readerBaseScale) * 100) + '%';
+  document.getElementById('readerBookmarkRibbon').classList.toggle('show', readerPage === readerLastReadPage);
   document.querySelector('.reader-fullscreen').scrollTo({top:0, behavior:'instant'});
   saveReaderProgress();
 }
@@ -1172,8 +1181,13 @@ function setupReaderPinchZoom(){
 /* ================= INDEX (table of contents) ================= */
 function renderIndexList(){
   const list = document.getElementById('readerIndexList');
+  const bookmarkHtml = (readerLastReadPage && readerLastReadPage > 1) ? `
+    <div class="reader-index-item reader-index-bookmark" onclick="jumpToTopic(${readerLastReadPage})">
+      <span>🔖 Continue Reading</span><span class="pg">Pg ${readerLastReadPage}</span>
+    </div>
+  ` : '';
   if(!readerTopics.length){
-    list.innerHTML = '<div class="reader-index-empty">Is note ke liye abhi index available nahi hai.</div>';
+    list.innerHTML = bookmarkHtml + '<div class="reader-index-empty">Is note ke liye abhi index available nahi hai.</div>';
     return;
   }
   const byParent = {};
@@ -1186,7 +1200,7 @@ function renderIndexList(){
       ${renderLevel(t.id, depth+1)}
     `).join('');
   }
-  list.innerHTML = renderLevel('root', 0);
+  list.innerHTML = bookmarkHtml + renderLevel('root', 0);
 }
 function toggleIndexPanel(){
   document.getElementById('readerIndexPanel').classList.toggle('open');
