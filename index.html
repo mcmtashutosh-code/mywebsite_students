@@ -158,7 +158,7 @@ img{max-width:100%;}
 @media (max-width:700px){.reader-canvas-scroll{padding:20px 56px 50px;} .reader-side-btn{width:42px; height:42px; font-size:19px;} .reader-side-btn.left{left:8px;} .reader-side-btn.right{right:8px;}}
 #pdfCanvas{max-width:100%; border-radius:8px; display:block; box-shadow:0 8px 30px rgba(0,0,0,.5);}
 .reader-guard{position:relative;}
-.reader-guard::after{content:"VIDHYAPATH — READ ONLY"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; color:rgba(255,255,255,.05); pointer-events:none; transform:rotate(-18deg);}
+.reader-guard::after{content:"VIDHYAPATH — READ ONLY"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; color:rgba(255,255,255,.05); pointer-events:none; transform:rotate(-18deg); z-index:5;}
 
 .reader-zoom-group{display:flex; align-items:center; gap:4px;}
 .reader-zoom-btn{background:var(--panel); border:1px solid var(--line-soft); color:var(--text-dim); font-weight:700; font-size:15px; width:32px; height:32px; border-radius:8px; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; line-height:1;}
@@ -178,6 +178,35 @@ img{max-width:100%;}
 }
 .reader-fullscreen:fullscreen{background:#0a1220;}
 .reader-fullscreen:-webkit-full-screen{background:#0a1220;}
+
+/* Index (table of contents) panel */
+.reader-index-panel{position:fixed; top:0; right:-320px; width:300px; height:100%; background:var(--panel); border-left:1px solid var(--line-soft); z-index:90; transition:right .25s ease; overflow-y:auto; padding:0;}
+.reader-index-panel.open{right:0;}
+.reader-index-head{position:sticky; top:0; display:flex; justify-content:space-between; align-items:center; padding:16px 18px; background:var(--panel); border-bottom:1px solid var(--line-soft); font-weight:700; font-size:14px;}
+.reader-index-head button{background:none; border:none; color:var(--text-mute); font-size:16px; cursor:pointer;}
+.reader-index-item{padding:12px 18px; border-bottom:1px solid var(--line-soft); cursor:pointer; font-size:13px; display:flex; justify-content:space-between; gap:8px;}
+.reader-index-item:hover{background:var(--bg-2); color:var(--seal);}
+.reader-index-item span.pg{color:var(--text-mute); font-size:11.5px; white-space:nowrap;}
+.reader-index-empty{padding:20px 18px; color:var(--text-mute); font-size:12.5px;}
+
+/* Resume banner */
+.reader-resume-banner{display:none; position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:88; background:var(--panel); border:1px solid var(--seal); border-radius:10px; padding:10px 16px; font-size:12.5px; color:var(--text); box-shadow:0 6px 20px rgba(0,0,0,.35); cursor:pointer;}
+@media (max-width:520px){.reader-resume-banner{top:96px; font-size:11.5px; padding:9px 14px; max-width:88%; text-align:center;}}
+
+/* PDF.js text layer (selectable, invisible text over canvas) */
+.textLayer{position:absolute; left:0; top:0; overflow:hidden; line-height:1; opacity:1;}
+.textLayer span, .textLayer br{color:transparent; position:absolute; white-space:pre; cursor:text; transform-origin:0% 0%;}
+.textLayer ::selection{background:rgba(64,158,255,.35);}
+
+/* Highlight overlay */
+.highlightLayer{position:absolute; left:0; top:0; pointer-events:none;}
+.highlight-rect{position:absolute; border-radius:2px; pointer-events:auto; cursor:pointer; mix-blend-mode:multiply;}
+
+.highlight-toolbar{display:none; position:fixed; z-index:200; background:var(--panel); border:1px solid var(--line-soft); border-radius:10px; padding:6px; gap:6px; box-shadow:0 6px 20px rgba(0,0,0,.4);}
+.highlight-toolbar.show{display:flex;}
+.highlight-swatch{width:26px; height:26px; border-radius:6px; border:2px solid transparent; cursor:pointer;}
+.highlight-swatch:hover{border-color:var(--text);}
+.highlight-toolbar .hl-remove{width:26px; height:26px; border-radius:6px; border:1px solid var(--line-soft); background:var(--bg-2); color:var(--stamp); font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center;}
 
 /* ---------- Auth Modal ---------- */
 .modal-overlay{display:none; position:fixed; inset:0; background:rgba(5,10,20,.7); backdrop-filter:blur(3px); z-index:100; align-items:center; justify-content:center; padding:16px;}
@@ -317,19 +346,31 @@ footer b{color:var(--gold);}
           <span id="readerPageLabel" class="reader-page-label">1 / 1</span>
         </div>
         <div class="reader-zoom-group">
+          <button class="reader-zoom-btn" id="readerIndexBtn" onclick="toggleIndexPanel()" title="Index">☰</button>
           <button class="reader-zoom-btn" onclick="zoomReader(-1)">−</button>
           <span id="readerZoomLabel" class="reader-zoom-label">100%</span>
           <button class="reader-zoom-btn" onclick="zoomReader(1)">+</button>
           <button class="reader-zoom-btn" id="readerFullscreenBtn" onclick="toggleReaderFullscreen()" title="Fullscreen">⛶</button>
         </div>
       </div>
+      <div id="readerIndexPanel" class="reader-index-panel">
+        <div class="reader-index-head">
+          <span>Index</span>
+          <button onclick="toggleIndexPanel()">✕</button>
+        </div>
+        <div id="readerIndexList"></div>
+      </div>
+      <div id="readerResumeBanner" class="reader-resume-banner"></div>
       <button class="reader-side-btn left" id="readerPrevBtn" onclick="changeReaderPage(-1)">‹</button>
       <button class="reader-side-btn right" id="readerNextBtn" onclick="changeReaderPage(1)">›</button>
       <div class="reader-canvas-scroll" id="readerCanvasScroll">
-        <div class="reader-guard">
+        <div class="reader-guard" id="readerGuard">
           <canvas id="pdfCanvas"></canvas>
+          <div id="textLayer" class="textLayer"></div>
+          <div id="highlightLayer" class="highlightLayer"></div>
         </div>
       </div>
+      <div id="highlightToolbar" class="highlight-toolbar"></div>
     </div>
   </div>
 
@@ -511,6 +552,8 @@ let jobsCategory = 'government';
 let jobsSubtype = 'latest_job';
 let liveTab = 'upcoming';
 let readerDoc = null, readerPage = 1, readerNumPages = 1, readerScale = 1.4, readerBaseScale = 1.4;
+let readerNoteId = null, readerNoteTitle = '', readerTopics = [], readerHighlights = [];
+let readerProgressSaveTimer = null;
 
 document.getElementById('yr').textContent = new Date().getFullYear();
 
@@ -879,7 +922,7 @@ function accessLabel(mode){
 }
 
 function noteActionButtons(n){
-  const readBtn = `<button class="btn-sm btn-ghost-sm" onclick="openNoteReader('${esc(n.file_path)}')">Read</button>`;
+  const readBtn = `<button class="btn-sm btn-ghost-sm" onclick="openNoteReader('${esc(n.file_path)}','${n.id}','${esc(n.topic).replace(/'/g,"\\'")}')">Read</button>`;
   const isFullAccess = currentProfile?.plan === 'full_access';
 
   if(n.access_mode === 'only_read'){
@@ -905,8 +948,10 @@ function notePublicUrl(path){
   return data.publicUrl;
 }
 
-async function openNoteReader(path){
+async function openNoteReader(path, noteId, noteTitle){
   if(!currentUser){ toast('Please login to access this feature.'); openModal('authModal'); return; }
+  readerNoteId = noteId;
+  readerNoteTitle = noteTitle || '';
   const url = notePublicUrl(path);
   showView('reader');
   await openReader(url);
@@ -952,6 +997,8 @@ async function openReader(url){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle = '#93a7c4'; ctx.font = '14px Inter, sans-serif';
   ctx.fillText('Loading document…', 20, 100);
+  document.getElementById('readerResumeBanner').style.display = 'none';
+  document.getElementById('readerIndexPanel').classList.remove('open');
   try{
     const bytes = await fetch(url).then(r=>{
       if(!r.ok) throw new Error('File fetch failed (status ' + r.status + ')');
@@ -963,8 +1010,30 @@ async function openReader(url){
     readerPage = 1;
     await computeReaderBaseScale();
     readerScale = readerBaseScale;
+
+    // Load index topics + resume progress + this note's highlights in parallel
+    const [topicsRes, progressRes, highlightsRes] = await Promise.all([
+      sb.from('note_topics').select('*').eq('note_id', readerNoteId).order('order_index').order('page_number'),
+      sb.from('note_progress').select('*').eq('note_id', readerNoteId).eq('user_id', currentUser.id).maybeSingle(),
+      sb.from('note_highlights').select('*').eq('note_id', readerNoteId).eq('user_id', currentUser.id)
+    ]);
+    readerTopics = topicsRes.data || [];
+    readerHighlights = highlightsRes.data || [];
+    renderIndexList();
+
+    const savedPage = progressRes.data?.last_page;
+    if(savedPage && savedPage > 1 && savedPage <= readerNumPages){
+      readerPage = savedPage;
+      const banner = document.getElementById('readerResumeBanner');
+      banner.textContent = `Resumed from Page ${savedPage}. Tap here to start from Page 1.`;
+      banner.onclick = () => { readerPage = 1; renderReaderPage(); banner.style.display = 'none'; };
+      banner.style.display = 'block';
+      setTimeout(()=>{ banner.style.display = 'none'; }, 6000);
+    }
+
     await renderReaderPage();
     setupReaderPinchZoom();
+    setupHighlightSelection();
   }catch(e){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle = '#a8382f'; ctx.font = '14px Inter, sans-serif';
@@ -986,6 +1055,9 @@ async function computeReaderBaseScale(){
 
 function closeReader(){
   readerDoc = null;
+  readerNoteId = null; readerTopics = []; readerHighlights = [];
+  hideHighlightToolbar();
+  document.getElementById('readerIndexPanel').classList.remove('open');
   if(document.fullscreenElement || document.webkitFullscreenElement){
     (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
   }
@@ -994,6 +1066,7 @@ function closeReader(){
 
 async function renderReaderPage(){
   if(!readerDoc) return;
+  hideHighlightToolbar();
   const page = await readerDoc.getPage(readerPage);
   const viewport = page.getViewport({ scale: readerScale });
   const canvas = document.getElementById('pdfCanvas');
@@ -1007,6 +1080,15 @@ async function renderReaderPage(){
   canvas.style.height = viewport.height + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   await page.render({ canvasContext: ctx, viewport }).promise;
+
+  // Sync the guard/text-layer/highlight-layer container to the same CSS size as the canvas
+  const guard = document.getElementById('readerGuard');
+  guard.style.width = viewport.width + 'px';
+  guard.style.height = viewport.height + 'px';
+
+  await renderReaderTextLayer(page, viewport);
+  renderReaderHighlights(viewport);
+
   document.getElementById('readerPageLabel').textContent = readerPage + ' / ' + readerNumPages;
   document.getElementById('readerJumpInput').max = readerNumPages;
   document.getElementById('readerJumpInput').placeholder = '1-' + readerNumPages;
@@ -1014,6 +1096,29 @@ async function renderReaderPage(){
   document.getElementById('readerNextBtn').disabled = readerPage >= readerNumPages;
   document.getElementById('readerZoomLabel').textContent = Math.round((readerScale / readerBaseScale) * 100) + '%';
   document.querySelector('.reader-fullscreen').scrollTo({top:0, behavior:'instant'});
+  saveReaderProgress();
+}
+
+async function renderReaderTextLayer(page, viewport){
+  const textLayerDiv = document.getElementById('textLayer');
+  textLayerDiv.innerHTML = '';
+  textLayerDiv.style.width = viewport.width + 'px';
+  textLayerDiv.style.height = viewport.height + 'px';
+  try{
+    const textContent = await page.getTextContent();
+    const task = pdfjsLib.renderTextLayer({ textContentSource: textContent, container: textLayerDiv, viewport });
+    await task.promise;
+  }catch(e){ /* text layer is a progressive enhancement — safe to skip on failure */ }
+}
+
+function saveReaderProgress(){
+  if(!readerNoteId || !currentUser) return;
+  clearTimeout(readerProgressSaveTimer);
+  readerProgressSaveTimer = setTimeout(async ()=>{
+    await sb.from('note_progress').upsert({
+      user_id: currentUser.id, note_id: readerNoteId, last_page: readerPage, updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,note_id' });
+  }, 800);
 }
 
 function zoomReader(direction){
@@ -1062,6 +1167,130 @@ function setupReaderPinchZoom(){
       renderReaderPage();
     }
   }, { passive:true });
+}
+
+/* ================= INDEX (table of contents) ================= */
+function renderIndexList(){
+  const list = document.getElementById('readerIndexList');
+  if(!readerTopics.length){
+    list.innerHTML = '<div class="reader-index-empty">Is note ke liye abhi index available nahi hai.</div>';
+    return;
+  }
+  const byParent = {};
+  readerTopics.forEach(t => { const k = t.parent_id || 'root'; (byParent[k] = byParent[k] || []).push(t); });
+  function renderLevel(parentKey, depth){
+    return (byParent[parentKey] || []).map(t => `
+      <div class="reader-index-item" style="padding-left:${18 + depth*18}px;" onclick="jumpToTopic(${t.page_number})">
+        <span>${depth>0?'↳ ':''}${esc(t.title)}</span><span class="pg">Pg ${t.page_number}</span>
+      </div>
+      ${renderLevel(t.id, depth+1)}
+    `).join('');
+  }
+  list.innerHTML = renderLevel('root', 0);
+}
+function toggleIndexPanel(){
+  document.getElementById('readerIndexPanel').classList.toggle('open');
+}
+function jumpToTopic(page){
+  document.getElementById('readerIndexPanel').classList.remove('open');
+  if(page < 1 || page > readerNumPages) return;
+  readerPage = page;
+  renderReaderPage();
+}
+
+/* ================= HIGHLIGHTING (select text, mark important) ================= */
+const HIGHLIGHT_COLORS = ['#ffe066', '#a5d8ff', '#b2f2bb', '#ffc9c9'];
+
+function renderReaderHighlights(viewport){
+  const layer = document.getElementById('highlightLayer');
+  layer.innerHTML = '';
+  layer.style.width = viewport.width + 'px';
+  layer.style.height = viewport.height + 'px';
+  const pageHighlights = readerHighlights.filter(h => h.page_number === readerPage);
+  pageHighlights.forEach(h=>{
+    (h.rects || []).forEach(r=>{
+      const div = document.createElement('div');
+      div.className = 'highlight-rect';
+      div.style.left = (r.left * viewport.width) + 'px';
+      div.style.top = (r.top * viewport.height) + 'px';
+      div.style.width = (r.width * viewport.width) + 'px';
+      div.style.height = (r.height * viewport.height) + 'px';
+      div.style.background = h.color || '#ffe066';
+      div.dataset.highlightId = h.id;
+      div.title = 'Tap to remove highlight';
+      div.onclick = (e) => { e.stopPropagation(); removeHighlight(h.id); };
+      layer.appendChild(div);
+    });
+  });
+}
+
+let pendingSelectionRects = null;
+function setupHighlightSelection(){
+  const textLayerDiv = document.getElementById('textLayer');
+  if(textLayerDiv.dataset.selBound) return; // bind once
+  textLayerDiv.dataset.selBound = '1';
+  const handler = ()=>{
+    setTimeout(()=>{ // slight delay lets the browser finalize the selection
+      const sel = window.getSelection();
+      if(!sel || sel.isCollapsed || !sel.toString().trim()){ return; }
+      const anchorNode = sel.anchorNode;
+      if(!anchorNode || !document.getElementById('textLayer').contains(anchorNode)) return;
+      const range = sel.getRangeAt(0);
+      const clientRects = Array.from(range.getClientRects());
+      if(!clientRects.length) return;
+      const guardRect = document.getElementById('readerGuard').getBoundingClientRect();
+      pendingSelectionRects = clientRects.map(r => ({
+        left: (r.left - guardRect.left) / guardRect.width,
+        top: (r.top - guardRect.top) / guardRect.height,
+        width: r.width / guardRect.width,
+        height: r.height / guardRect.height
+      }));
+      const last = clientRects[clientRects.length - 1];
+      showHighlightToolbar(last.right, last.bottom, sel.toString().slice(0,140));
+    }, 10);
+  };
+  textLayerDiv.addEventListener('mouseup', handler);
+  textLayerDiv.addEventListener('touchend', handler);
+}
+
+function showHighlightToolbar(x, y, snippet){
+  const bar = document.getElementById('highlightToolbar');
+  bar.innerHTML = HIGHLIGHT_COLORS.map(c => `<button class="highlight-swatch" style="background:${c};" onclick="saveHighlight('${c}','${esc(snippet).replace(/'/g,"\\'")}')"></button>`).join('')
+    + `<button class="hl-remove" title="Cancel" onclick="hideHighlightToolbar()">✕</button>`;
+  const barWidth = 4 * 32 + 20;
+  let left = Math.min(x, window.innerWidth - barWidth - 12);
+  left = Math.max(12, left);
+  bar.style.left = left + 'px';
+  bar.style.top = Math.min(y + 8, window.innerHeight - 50) + 'px';
+  bar.classList.add('show');
+}
+function hideHighlightToolbar(){
+  document.getElementById('highlightToolbar').classList.remove('show');
+  pendingSelectionRects = null;
+  window.getSelection()?.removeAllRanges();
+}
+async function saveHighlight(color, snippet){
+  if(!pendingSelectionRects || !readerNoteId){ hideHighlightToolbar(); return; }
+  const rects = pendingSelectionRects;
+  hideHighlightToolbar();
+  const { data, error } = await sb.from('note_highlights').insert({
+    user_id: currentUser.id, note_id: readerNoteId, page_number: readerPage,
+    rects, snippet, color
+  }).select().single();
+  if(error){ toast('Highlight save nahi ho paya: ' + error.message); return; }
+  readerHighlights.push(data);
+  const page = await readerDoc.getPage(readerPage);
+  const viewport = page.getViewport({ scale: readerScale });
+  renderReaderHighlights(viewport);
+}
+async function removeHighlight(id){
+  const { error } = await sb.from('note_highlights').delete().eq('id', id);
+  if(error){ toast('Remove fail: ' + error.message); return; }
+  readerHighlights = readerHighlights.filter(h => h.id !== id);
+  const page = await readerDoc.getPage(readerPage);
+  const viewport = page.getViewport({ scale: readerScale });
+  renderReaderHighlights(viewport);
+  toast('Highlight removed.');
 }
 
 function changeReaderPage(delta){
