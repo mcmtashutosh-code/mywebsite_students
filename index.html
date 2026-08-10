@@ -826,7 +826,8 @@ async function loadReachStats(){
 async function loadNoticesHome(){
   const { data, error } = await sb.from('notices').select('*').eq('is_active', true).order('priority', {ascending:false}).order('created_at', {ascending:false}).limit(6);
   const el = document.getElementById('homeNoticeStrip');
-  if(error || !data || !data.length){ el.innerHTML = '<div class="empty-note">No notices available at this time.</div>'; return; }
+  if(error){ el.innerHTML = '<div class="empty-note">Error loading notices: '+esc(error.message)+'</div>'; return; }
+  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">No notices available at this time.</div>'; return; }
   el.innerHTML = data.map(n=>noticeCardHtml(n)).join('');
   updateUnreadBadge();
 }
@@ -1042,6 +1043,7 @@ async function openReader(url){
     await renderReaderPage();
     setupReaderPinchZoom();
     setupHighlightSelection();
+    setupReaderSelectionCleanup();
   }catch(e){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle = '#a8382f'; ctx.font = '14px Inter, sans-serif';
@@ -1178,6 +1180,25 @@ function setupReaderPinchZoom(){
   }, { passive:true });
 }
 
+// Clears any leftover text selection (native blue/grey highlight) once the
+// user scrolls away without choosing a highlight color or cancelling —
+// otherwise the selected text stays visually tinted/dulled.
+function setupReaderSelectionCleanup(){
+  const container = document.querySelector('.reader-fullscreen');
+  if(container.dataset.selCleanupBound) return;
+  container.dataset.selCleanupBound = '1';
+  let scrollTimer = null;
+  container.addEventListener('scroll', () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      const bar = document.getElementById('highlightToolbar');
+      if(!bar.classList.contains('show')){
+        window.getSelection()?.removeAllRanges();
+      }
+    }, 150);
+  }, { passive:true });
+}
+
 /* ================= INDEX (table of contents) ================= */
 function renderIndexList(){
   const list = document.getElementById('readerIndexList');
@@ -1246,7 +1267,14 @@ function setupHighlightSelection(){
   const handler = ()=>{
     setTimeout(()=>{ // slight delay lets the browser finalize the selection
       const sel = window.getSelection();
-      if(!sel || sel.isCollapsed || !sel.toString().trim()){ return; }
+      if(!sel || sel.isCollapsed || !sel.toString().trim()){
+        // A plain tap (no drag) with no new selection — clear any stale
+        // leftover selection so it doesn't sit there visually dulling text.
+        if(!document.getElementById('highlightToolbar').classList.contains('show')){
+          sel?.removeAllRanges();
+        }
+        return;
+      }
       const anchorNode = sel.anchorNode;
       if(!anchorNode || !document.getElementById('textLayer').contains(anchorNode)) return;
       const range = sel.getRangeAt(0);
