@@ -998,7 +998,14 @@ async function renderReaderPage(){
   const viewport = page.getViewport({ scale: readerScale });
   const canvas = document.getElementById('pdfCanvas');
   const ctx = canvas.getContext('2d');
-  canvas.width = viewport.width; canvas.height = viewport.height;
+  const dpr = window.devicePixelRatio || 1;
+  // Render at full device pixel density so the page stays sharp on
+  // high-resolution (Retina/HD) mobile screens instead of looking blurry.
+  canvas.width = Math.floor(viewport.width * dpr);
+  canvas.height = Math.floor(viewport.height * dpr);
+  canvas.style.width = viewport.width + 'px';
+  canvas.style.height = viewport.height + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   await page.render({ canvasContext: ctx, viewport }).promise;
   document.getElementById('readerPageLabel').textContent = readerPage + ' / ' + readerNumPages;
   document.getElementById('readerJumpInput').max = readerNumPages;
