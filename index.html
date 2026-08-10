@@ -1538,6 +1538,11 @@ async function init(){
   refreshAuthUI();
   await loadNoticesHome();
   await loadReachStats();
+  logSiteVisit();
+}
+function logSiteVisit(){
+  // Fire-and-forget — one row per real page load, doesn't block the UI.
+  sb.from('site_visits').insert({ user_id: currentUser?.id || null }).then(()=>{}, ()=>{});
 }
 init();
 </script>
