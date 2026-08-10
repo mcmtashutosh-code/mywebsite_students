@@ -448,6 +448,7 @@ footer b{color:var(--gold);}
       <div class="admit-card" style="display:block; padding:30px;">
         <div id="profileInfo" style="color:var(--ink);"></div>
         <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
+          <button class="btn-outline-ink" onclick="openEditProfile()">Edit Profile</button>
           <button class="btn-outline-ink" onclick="openPasswordChange()">Change Password</button>
           <button class="btn-stamp" onclick="doLogout()">Logout</button>
         </div>
@@ -524,6 +525,31 @@ footer b{color:var(--gold);}
     <input type="email" id="forgotEmail" placeholder="your@email.com">
     <div class="error-text" id="forgotError"></div>
     <button class="btn-full" id="forgotBtn" onclick="sendResetLink()">Send Reset Link</button>
+  </div>
+</div>
+
+<!-- ================= EDIT PROFILE MODAL ================= -->
+<div class="modal-overlay" id="editProfileModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('editProfileModal')">✕</button>
+    <div class="modal-head"><h2>Edit Profile</h2></div>
+    <label class="field-label">Full Name</label>
+    <input type="text" id="epFullName" placeholder="Your full name">
+    <label class="field-label">Mobile</label>
+    <input type="tel" id="epPhone" placeholder="10-digit mobile number">
+    <label class="field-label">Exam Category</label>
+    <select id="epExamCat">
+      <option value="">— Select —</option>
+      <option value="SSC">SSC</option>
+      <option value="Bank">Bank</option>
+      <option value="TCS/IT">TCS / IT Jobs</option>
+      <option value="Academic-9-10">Academic (9th-10th)</option>
+      <option value="Academic-11-12">Academic (11th-12th)</option>
+      <option value="Graduation">Graduation</option>
+      <option value="Other">Other</option>
+    </select>
+    <div class="error-text" id="epError"></div>
+    <button class="btn-full" id="epSaveBtn" onclick="submitEditProfile()">Save Changes</button>
   </div>
 </div>
 
@@ -788,6 +814,38 @@ function planColor(plan){
   if(plan==='full_access') return 'var(--stamp)';
   if(plan==='notes_only') return 'var(--seal)';
   return 'inherit';
+}
+
+function openEditProfile(){
+  if(!currentProfile) return;
+  document.getElementById('epFullName').value = currentProfile.full_name || '';
+  document.getElementById('epPhone').value = currentProfile.phone || '';
+  document.getElementById('epExamCat').value = currentProfile.exam_category || '';
+  document.getElementById('epError').textContent = '';
+  openModal('editProfileModal');
+}
+
+async function submitEditProfile(){
+  const full_name = document.getElementById('epFullName').value.trim();
+  const phone = document.getElementById('epPhone').value.trim();
+  const exam_category = document.getElementById('epExamCat').value;
+  const errEl = document.getElementById('epError');
+  errEl.textContent = '';
+
+  if(!full_name){ errEl.textContent = 'Name khaali nahi ho sakta.'; return; }
+  if(!phone || !/^\d{10}$/.test(phone)){ errEl.textContent = 'Valid 10-digit mobile number daalein.'; return; }
+  if(!exam_category){ errEl.textContent = 'Exam Category select karein.'; return; }
+
+  document.getElementById('epSaveBtn').disabled = true;
+  const { error } = await sb.from('profiles').update({ full_name, phone, exam_category }).eq('id', currentUser.id);
+  document.getElementById('epSaveBtn').disabled = false;
+  if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
+
+  await loadProfile();
+  renderProfile();
+  refreshAuthUI();
+  closeModal('editProfileModal');
+  toast('Profile updated successfully.');
 }
 
 function openPasswordChange(){ openModal('pwModal'); }
