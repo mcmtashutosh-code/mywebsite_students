@@ -591,7 +591,16 @@ let readerProgressSaveTimer = null;
 document.getElementById('yr').textContent = new Date().getFullYear();
 
 /* ================= VIEW ROUTING ================= */
+const GATED_VIEWS = ['notes', 'test', 'jobs', 'live'];
+let pendingGatedView = null;
 function showView(name){
+  if(GATED_VIEWS.includes(name) && !currentUser){
+    pendingGatedView = name;
+    toast('Please login to access this section.');
+    openModal('authModal');
+    setAuthTab('login');
+    return;
+  }
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const el = document.getElementById('view-'+name);
   if(el) el.classList.add('active');
@@ -724,6 +733,11 @@ async function doLogin(){
   closeModal('authModal');
   toast('Login successful. Welcome, ' + (currentProfile?.full_name || ''));
   refreshAuthUI();
+  if(pendingGatedView){
+    const target = pendingGatedView;
+    pendingGatedView = null;
+    showView(target);
+  }
 }
 
 async function doSignup(){
