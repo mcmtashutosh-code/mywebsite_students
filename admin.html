@@ -45,7 +45,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 .navbar-inner{max-width:1000px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; gap:12px; flex-wrap:wrap;}
 .brand{display:flex; align-items:center; gap:10px;}
 .navbar-logo-img{height:46px; width:auto; display:block;}
-.brand-seal{width:34px; height:34px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--seal), #0e4632); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; border:1.5px solid #2fa578; overflow:hidden;}
+.brand-seal{width:42px; height:42px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--seal), #0e4632); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; border:1.5px solid #2fa578; overflow:hidden;}
 .brand-seal img{width:100%; height:100%; object-fit:contain; padding:3px; box-sizing:border-box;}
 .brand-name{font-size:17px; font-weight:600;}
 .brand-name b{color:var(--gold);}
@@ -98,8 +98,8 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 <div class="navbar" id="navbar" style="display:none;">
   <div class="navbar-inner">
     <div class="brand">
-      <img src="logo-navbar.png" alt="Dhyeodaya" class="navbar-logo-img">
-      <span class="tag">ADMIN</span>
+      <div class="brand-seal"><img src="logo-icon.png" alt="Dhyeodaya"></div>
+      <div class="brand-name"><b>Dhyeo</b>daya <span class="tag">ADMIN</span></div>
     </div>
     <div class="pillnav">
       <button data-v="dash" class="active" onclick="showView('dash')">Dashboard</button>
@@ -1490,4 +1490,3 @@ checkExistingSession();
 </script>
 </body>
 </html>
-
