@@ -16,10 +16,16 @@
   --text:#e9eef6; --text-dim:#93a7c4; --text-mute:#5c7291;
   --radius:16px; --radius-sm:10px;
 }
+[data-theme="light"]{
+  --bg:#f3f5f9; --bg-2:#e9edf4; --panel:#ffffff; --line:#d7dee8; --line-soft:#e3e8f0;
+  --text:#1c2636; --text-dim:#4b5b74; --text-mute:#748199;
+}
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 body{background:radial-gradient(circle at 12% -8%, #12314f 0%, transparent 42%), radial-gradient(circle at 100% 6%, #0f2438 0%, transparent 38%), var(--bg);
-  min-height:100vh; font-family:'Inter',system-ui,sans-serif; color:var(--text);}
+  min-height:100vh; font-family:'Inter',system-ui,sans-serif; color:var(--text); transition:background-color .25s ease, color .25s ease;}
+[data-theme="light"] body{background:radial-gradient(circle at 12% -8%, #e4ecf7 0%, transparent 42%), radial-gradient(circle at 100% 6%, #eef3e9 0%, transparent 38%), var(--bg);}
+html{background:var(--bg);}
 h1,h2,h3,.serif{font-family:'Fraunces',serif;}
 .wrap{max-width:1000px; margin:0 auto; padding:0 18px 60px;}
 input,select,textarea{width:100%; background:var(--bg-2); color:var(--text); border:1px solid var(--line-soft); border-radius:9px; padding:11px 13px; font-size:14px; font-family:inherit; outline:none;}
@@ -51,6 +57,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 .brand-name b{color:var(--gold);}
 .tag{font-size:10px; color:var(--text-mute); font-weight:600; letter-spacing:.06em; margin-left:6px; background:var(--panel); padding:3px 8px; border-radius:6px;}
 .pillnav{display:flex; gap:4px; background:var(--panel); border:1px solid var(--line-soft); border-radius:999px; padding:4px; overflow-x:auto;}
+.theme-toggle-btn{background:var(--panel); border:1px solid var(--line-soft); color:var(--text-dim); width:38px; height:38px; border-radius:10px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
 .pillnav button{border:none; background:none; color:var(--text-dim); font-family:inherit; font-weight:600; font-size:12.5px; padding:8px 14px; border-radius:999px; cursor:pointer; white-space:nowrap;}
 .pillnav button.active{background:var(--seal); color:#eafff4;}
 
@@ -111,6 +118,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
       <button data-v="students" onclick="showView('students')">Students</button>
       <button data-v="settings" onclick="showView('settings')">Settings</button>
     </div>
+    <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark/light mode" id="themeToggleBtn">🌙</button>
   </div>
 </div>
 
@@ -507,6 +515,29 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 </div>
 
 <script>
+/* ================= THEME (dark/light) — applied immediately to avoid flash ================= */
+(function(){
+  const saved = localStorage.getItem('dhyeodaya_theme') || 'dark';
+  if(saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+})();
+function applyThemeIcon(){
+  const btn = document.getElementById('themeToggleBtn');
+  if(!btn) return;
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  btn.textContent = isLight ? '☀️' : '🌙';
+}
+function toggleTheme(){
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  if(isLight){
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('dhyeodaya_theme', 'dark');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('dhyeodaya_theme', 'light');
+  }
+  applyThemeIcon();
+}
+
 const SUPABASE_URL = 'https://iyzujwixwfydmkzmhrxo.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_4t1qso9eT9lNU_aGnS8hiQ_zX3EGBXd';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -774,6 +805,7 @@ function enterApp(){
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('navbar').style.display = 'block';
   document.getElementById('appWrap').style.display = 'block';
+  applyThemeIcon();
   loadDashStats();
 }
 
