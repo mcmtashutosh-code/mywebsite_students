@@ -463,7 +463,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
   <!-- ================= SUCCESS STORIES ================= -->
   <div class="view" id="view-stories">
     <div class="section">
-      <div class="section-head"><span class="section-title">Success Stories</span></div>
+      <div class="section-head"><span class="section-title" id="ssFormHeading">Add Success Story</span></div>
       <div class="panel-card">
         <label class="field-label">Student Name</label>
         <input type="text" id="ssName" placeholder="e.g. Rahul Kumar">
@@ -473,8 +473,12 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
         <textarea id="ssMessage" rows="3" placeholder="e.g. Dhyeodaya ke notes aur mock tests ne meri tayari bahut asaan bana di."></textarea>
         <label class="field-label">Photo (optional)</label>
         <input type="file" id="ssPhoto" accept="image/*">
+        <div id="ssCurrentPhotoNote" style="display:none; font-size:12px; color:var(--text-mute); margin-top:6px;">Ek photo already lagi hai. Nayi choose karoge to wahi replace ho jayegi, warna purani wahi rahegi.</div>
         <div class="error-text" id="ssError"></div>
-        <button class="btn btn-primary" id="ssSubmitBtn" style="margin-top:14px;" onclick="submitSuccessStory()">Add Success Story</button>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <button class="btn btn-primary" id="ssSubmitBtn" onclick="submitSuccessStory()">Add Success Story</button>
+          <button class="btn btn-ghost" id="ssCancelBtn" style="display:none;" onclick="cancelStoryEdit()">Cancel Edit</button>
+        </div>
       </div>
 
       <div class="section-head" style="margin-top:18px;"><span class="section-title" style="font-size:16px;">Existing Stories</span></div>
@@ -898,6 +902,37 @@ function studentPhotoUrl(path){
   const { data } = sb.storage.from(STUDENT_PHOTOS_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
+let editingStoryId = null;
+let editingStoryPhotoPath = null;
+
+function editStory(s){
+  editingStoryId = s.id;
+  editingStoryPhotoPath = s.photo_path || null;
+  document.getElementById('ssName').value = s.student_name || '';
+  document.getElementById('ssExamResult').value = s.exam_result || '';
+  document.getElementById('ssMessage').value = s.message || '';
+  document.getElementById('ssPhoto').value = '';
+  document.getElementById('ssCurrentPhotoNote').style.display = s.photo_path ? 'block' : 'none';
+  document.getElementById('ssFormHeading').textContent = 'Edit Success Story';
+  document.getElementById('ssSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('ssCancelBtn').style.display = 'inline-block';
+  document.getElementById('ssError').textContent = '';
+  document.querySelector('#view-stories .panel-card').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function cancelStoryEdit(){
+  editingStoryId = null;
+  editingStoryPhotoPath = null;
+  document.getElementById('ssName').value = '';
+  document.getElementById('ssExamResult').value = '';
+  document.getElementById('ssMessage').value = '';
+  document.getElementById('ssPhoto').value = '';
+  document.getElementById('ssCurrentPhotoNote').style.display = 'none';
+  document.getElementById('ssFormHeading').textContent = 'Add Success Story';
+  document.getElementById('ssSubmitBtn').textContent = 'Add Success Story';
+  document.getElementById('ssCancelBtn').style.display = 'none';
+  document.getElementById('ssError').textContent = '';
+}
+
 async function submitSuccessStory(){
   const student_name = document.getElementById('ssName').value.trim();
   const exam_result = document.getElementById('ssExamResult').value.trim();
@@ -908,26 +943,30 @@ async function submitSuccessStory(){
   if(!student_name || !exam_result){ errEl.textContent = 'Naam aur Exam/Result zaroori hai.'; return; }
 
   document.getElementById('ssSubmitBtn').disabled = true;
-  let photo_path = null;
+  let photo_path = editingStoryId ? editingStoryPhotoPath : null; // keep existing photo unless replaced
   const file = fileInput.files[0];
   if(file){
     if(file.size > 5*1024*1024){ errEl.textContent = 'Photo 5MB se bada nahi hona chahiye.'; document.getElementById('ssSubmitBtn').disabled = false; return; }
-    photo_path = `stories/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-    const { error: upErr } = await sb.storage.from(STUDENT_PHOTOS_BUCKET).upload(photo_path, file, { upsert: false });
+    const newPath = `stories/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const { error: upErr } = await sb.storage.from(STUDENT_PHOTOS_BUCKET).upload(newPath, file, { upsert: false });
     if(upErr){ errEl.textContent = 'Photo upload fail: ' + upErr.message; document.getElementById('ssSubmitBtn').disabled = false; return; }
+    // If replacing an existing photo, remove the old file afterward
+    if(editingStoryId && editingStoryPhotoPath){ await sb.storage.from(STUDENT_PHOTOS_BUCKET).remove([editingStoryPhotoPath]); }
+    photo_path = newPath;
   }
 
-  const { error } = await sb.from('success_stories').insert({
-    student_name, exam_result, message, photo_path, created_by: currentUser.id
-  });
+  let error;
+  if(editingStoryId){
+    ({ error } = await sb.from('success_stories').update({ student_name, exam_result, message, photo_path }).eq('id', editingStoryId));
+  } else {
+    ({ error } = await sb.from('success_stories').insert({ student_name, exam_result, message, photo_path, created_by: currentUser.id }));
+  }
   document.getElementById('ssSubmitBtn').disabled = false;
   if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
 
-  document.getElementById('ssName').value = '';
-  document.getElementById('ssExamResult').value = '';
-  document.getElementById('ssMessage').value = '';
-  fileInput.value = '';
-  toast('Success story added.');
+  const wasEditing = !!editingStoryId;
+  cancelStoryEdit();
+  toast(wasEditing ? 'Success story updated.' : 'Success story added.');
   loadStoriesAdmin();
 }
 async function loadStoriesAdmin(){
@@ -936,6 +975,7 @@ async function loadStoriesAdmin(){
   const { data, error } = await sb.from('success_stories').select('*').order('order_index').order('created_at', {ascending:false});
   if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
   if(!data || !data.length){ el.innerHTML = '<div class="empty-note">Koi success story add nahi hui abhi.</div>'; return; }
+  window.__storiesCache = data; // used by editStory() to look up full record by id
   el.innerHTML = data.map(s=>`
     <div class="list-item">
       <div style="display:flex; align-items:center; gap:12px;">
@@ -946,6 +986,7 @@ async function loadStoriesAdmin(){
         </div>
       </div>
       <div class="li-actions">
+        <button class="btn btn-ghost btn-xs" onclick='editStory(${JSON.stringify(s).replace(/'/g,"&#39;")})'>Edit</button>
         <button class="btn btn-ghost btn-xs" onclick="toggleStoryActive('${s.id}', ${!s.is_active})">${s.is_active?'Hide':'Show'}</button>
         <button class="btn btn-danger btn-xs" onclick="deleteSuccessStory('${s.id}','${s.photo_path?esc(s.photo_path):''}')">Delete</button>
       </div>
@@ -957,6 +998,7 @@ async function toggleStoryActive(id, newVal){
   loadStoriesAdmin();
 }
 async function deleteSuccessStory(id, photoPath){
+  if(editingStoryId === id) cancelStoryEdit();
   if(photoPath){ await sb.storage.from(STUDENT_PHOTOS_BUCKET).remove([photoPath]); }
   const { error } = await sb.from('success_stories').delete().eq('id', id);
   if(error){ toast('Delete fail: ' + error.message); return; }
