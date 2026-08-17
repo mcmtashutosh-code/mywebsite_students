@@ -56,6 +56,15 @@ img{max-width:100%;}
 .navbar-inner{max-width:1080px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 18px; gap:14px;}
 .navbar-logo-img{height:86px; width:auto; display:block;}
 @media (max-width:520px){.navbar-logo-img{height:64px;} .navbar-inner{padding:8px 14px;}}
+
+/* ================= SPLASH SCREEN ================= */
+.splash-screen{position:fixed; inset:0; z-index:9999; background:linear-gradient(180deg,var(--paper),var(--paper-2)); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; transition:opacity .5s ease, visibility .5s ease;}
+.splash-screen.hide{opacity:0; visibility:hidden; pointer-events:none;}
+.splash-logo{width:min(200px, 55vw); height:auto; animation:splashPulse 1.6s ease-in-out infinite;}
+@keyframes splashPulse{0%,100%{transform:scale(1); opacity:1;} 50%{transform:scale(1.04); opacity:.9;}}
+.splash-loader{width:34px; height:34px; border:3px solid rgba(31,122,92,.25); border-top-color:var(--seal); border-radius:50%; animation:splashSpin .8s linear infinite;}
+@keyframes splashSpin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce){.splash-logo{animation:none;} .splash-loader{animation:none;}}
 .brand{display:flex; align-items:center; gap:10px; cursor:pointer;}
 .brand-seal{width:44px; height:44px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--seal), #0e4632); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:16px; color:#e8f7ef; border:1.5px solid #2fa578; overflow:hidden;}
 .brand-seal img{width:100%; height:100%; object-fit:contain; padding:3px; box-sizing:border-box;}
@@ -105,6 +114,14 @@ img{max-width:100%;}
 .see-all:hover{border-color:var(--seal); color:var(--seal);}
 
 .card-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px;}
+.stories-scroll{display:flex; gap:14px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin;}
+.story-card{flex:0 0 260px; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:20px; display:flex; flex-direction:column; gap:10px;}
+.story-card-head{display:flex; align-items:center; gap:12px;}
+.story-photo{width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid var(--seal); flex-shrink:0;}
+.story-photo-fallback{width:52px; height:52px; border-radius:50%; background:var(--bg-2); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:2px solid var(--seal);}
+.story-name{font-weight:700; font-size:14px; color:var(--text);}
+.story-result{font-size:12px; color:var(--gold); font-weight:600;}
+.story-message{font-size:13px; color:var(--text-dim); line-height:1.5; font-style:italic;}
 .quick-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:20px; cursor:pointer; transition:border-color .15s;}
 .quick-card:hover{border-color:var(--seal);}
 .quick-card .qi{width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:12px;}
@@ -242,6 +259,25 @@ img{max-width:100%;}
 input,select,textarea{width:100%; background:var(--bg-2); color:var(--text); border:1px solid var(--line-soft); border-radius:9px; padding:12px 13px; font-size:14.5px; font-family:inherit; outline:none;}
 input:focus,select:focus,textarea:focus{border-color:var(--seal);}
 .btn-full{width:100%; background:var(--seal); color:#eafff4; border:none; border-radius:9px; padding:13px; font-weight:700; font-size:14.5px; cursor:pointer; font-family:inherit; margin-top:18px;}
+
+/* ================= HOVER EFFECTS (all buttons) ================= */
+.pillnav button, .icon-btn, .theme-toggle-btn, .btn-login, .btn-stamp, .btn-outline-ink,
+.quick-card, .chip, .btn-sm, .btn-primary-sm, .btn-ghost-sm, .btn-full,
+.reader-zoom-btn, .reader-close-btn, .reader-side-btn, .highlight-swatch,
+.forgot-pw-link, .btn-outline-red, button{
+  transition:filter .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .08s ease;
+}
+.pillnav button:hover:not(.active){background:var(--line-soft); color:var(--text);}
+.icon-btn:hover, .theme-toggle-btn:hover{border-color:var(--seal); color:var(--seal); background:var(--bg-2);}
+.btn-login:hover, .btn-stamp:hover, .btn-full:hover, .btn-primary-sm:hover{filter:brightness(1.12); box-shadow:0 4px 14px -4px rgba(0,0,0,.35);}
+.btn-outline-ink:hover{background:rgba(34,49,74,.08);}
+.chip:hover:not(.sel){border-color:var(--seal); color:var(--text);}
+.btn-ghost-sm:hover{border-color:var(--seal); color:var(--text);}
+.quick-card:hover{border-color:var(--seal); transform:translateY(-2px); box-shadow:0 10px 26px -14px rgba(0,0,0,.5);}
+button:active, .btn-sm:active, .btn-full:active, .btn-login:active{transform:scale(.97);}
+@media (hover:none){
+  .quick-card:hover{transform:none;}
+}
 .btn-full:disabled{opacity:.55;}
 .switch-line{text-align:center; font-size:12.5px; color:var(--text-mute); margin-top:14px;}
 .switch-line b{color:var(--seal); cursor:pointer;}
@@ -265,6 +301,12 @@ footer b{color:var(--gold);}
 </style>
 </head>
 <body oncontextmenu="return false;" onkeydown="if((event.ctrlKey||event.metaKey)&&['p','s','u','c'].includes(event.key.toLowerCase())){event.preventDefault();}">
+
+<div id="splashScreen" class="splash-screen">
+  <img src="logo-full.png" alt="Dhyeodaya" class="splash-logo">
+  <div class="splash-loader"></div>
+</div>
+
 <div class="topstrip"></div>
 
 <div class="navbar">
@@ -340,6 +382,11 @@ footer b{color:var(--gold);}
         <div class="quick-card" onclick="showView('jobs')"><div class="qi" style="background:#3a2416; color:#e8a262;">💼</div><h3>Job Updates</h3><p>Latest verified vacancies from Government and Private sectors.</p></div>
         <div class="quick-card" onclick="showView('live')"><div class="qi" style="background:#3a1f2a; color:#e87ba0;">🎥</div><h3>Live Classes</h3><p>Scheduled live lectures conducted by expert faculty.</p></div>
       </div>
+    </div>
+
+    <div class="section" id="homeStoriesSection" style="display:none;">
+      <div class="section-head"><span class="section-title"><span class="no">★</span>Success Stories</span></div>
+      <div id="homeStoriesList" class="stories-scroll"></div>
     </div>
   </div>
 
@@ -455,6 +502,10 @@ footer b{color:var(--gold);}
         <img src="logo-full.png" alt="Dhyeodaya" style="max-width:260px; width:100%; margin:0 auto 24px; display:block;">
         <p class="admit-sub" style="max-width:640px; margin:0 auto; text-align:left; white-space:pre-line;" id="aboutTextDisplay">Loading…</p>
       </div>
+    </div>
+    <div class="section" id="aboutStoriesSection" style="display:none;">
+      <div class="section-head"><span class="section-title"><span class="no">★</span>Success Stories</span></div>
+      <div id="aboutStoriesList" class="stories-scroll"></div>
     </div>
   </div>
 
@@ -589,8 +640,20 @@ footer b{color:var(--gold);}
 <script>
 /* ================= THEME (dark/light) — applied immediately to avoid flash ================= */
 (function(){
-  const saved = localStorage.getItem('dhyeodaya_theme') || 'dark';
-  if(saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  const saved = localStorage.getItem('dhyeodaya_theme');
+  // If the person hasn't manually chosen before, follow their device's system preference.
+  const systemPrefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  const useLight = saved ? (saved === 'light') : systemPrefersLight;
+  if(useLight) document.documentElement.setAttribute('data-theme', 'light');
+  // Keep following system changes live, unless the person has manually picked a theme.
+  if(!saved && window.matchMedia){
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e)=>{
+      if(localStorage.getItem('dhyeodaya_theme')) return; // manual choice now takes priority
+      if(e.matches) document.documentElement.setAttribute('data-theme', 'light');
+      else document.documentElement.removeAttribute('data-theme');
+      applyThemeIcon();
+    });
+  }
 })();
 function applyThemeIcon(){
   const btn = document.getElementById('themeToggleBtn');
@@ -922,6 +985,42 @@ async function loadAboutText(){
   const { data, error } = await sb.from('site_settings').select('value').eq('key', 'about_text').single();
   if(error || !data){ el.textContent = 'Dhyeodaya is a dedicated EdTech platform for Indian exam aspirants.'; return; }
   el.textContent = data.value;
+  loadSuccessStories('about');
+}
+
+/* ================= SUCCESS STORIES ================= */
+function studentPhotoUrl(path){
+  if(!path) return '';
+  const { data } = sb.storage.from('student-photos').getPublicUrl(path);
+  return data.publicUrl;
+}
+let successStoriesCache = null;
+async function loadSuccessStories(target){
+  // target: 'home' or 'about' — renders into that section's container
+  const sectionId = target === 'home' ? 'homeStoriesSection' : 'aboutStoriesSection';
+  const listId = target === 'home' ? 'homeStoriesList' : 'aboutStoriesList';
+  const section = document.getElementById(sectionId);
+  const list = document.getElementById(listId);
+  if(!section || !list) return;
+
+  if(!successStoriesCache){
+    const { data, error } = await sb.from('success_stories').select('*').eq('is_active', true).order('order_index').order('created_at', {ascending:false});
+    successStoriesCache = (!error && data) ? data : [];
+  }
+  if(!successStoriesCache.length){ section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = successStoriesCache.map(s => `
+    <div class="story-card">
+      <div class="story-card-head">
+        ${s.photo_path ? `<img src="${studentPhotoUrl(s.photo_path)}" class="story-photo" alt="${esc(s.student_name)}">` : `<div class="story-photo-fallback">🎓</div>`}
+        <div>
+          <div class="story-name">${esc(s.student_name)}</div>
+          <div class="story-result">${esc(s.exam_result)}</div>
+        </div>
+      </div>
+      ${s.message ? `<div class="story-message">"${esc(s.message)}"</div>` : ''}
+    </div>
+  `).join('');
 }
 
 /* ================= REACH STATS ================= */
@@ -1596,18 +1695,28 @@ sb.auth.onAuthStateChange((event, session)=>{
 });
 
 async function init(){
+  const splashStart = Date.now();
   applyThemeIcon();
   await loadProfile();
   refreshAuthUI();
   await loadNoticesHome();
   await loadReachStats();
+  loadSuccessStories('home');
   logSiteVisit();
+
+  // Keep the splash visible for at least 700ms so it doesn't flash on fast loads
+  const elapsed = Date.now() - splashStart;
+  setTimeout(()=>{
+    document.getElementById('splashScreen')?.classList.add('hide');
+  }, Math.max(0, 700 - elapsed));
 }
 function logSiteVisit(){
   // Fire-and-forget — one row per real page load, doesn't block the UI.
   sb.from('site_visits').insert({ user_id: currentUser?.id || null }).then(()=>{}, ()=>{});
 }
 init();
+// Safety fallback — never let the splash screen block the site for more than 6s
+setTimeout(()=>{ document.getElementById('splashScreen')?.classList.add('hide'); }, 6000);
 </script>
 </body>
 </html>
