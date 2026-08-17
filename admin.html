@@ -47,6 +47,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 }
 .pillnav button:hover:not(.active){background:var(--line-soft); color:var(--text);}
 .theme-toggle-btn:hover{border-color:var(--seal); color:var(--seal); background:var(--bg-2);}
+.badge-dot{background:var(--stamp); color:#fff; font-size:10px; font-weight:700; border-radius:999px; padding:1px 6px; margin-left:4px;}
 .btn-primary:hover, .btn-danger:hover{filter:brightness(1.12); box-shadow:0 4px 14px -4px rgba(0,0,0,.35);}
 .btn-ghost:hover{border-color:var(--seal); color:var(--text);}
 .btn:active{transform:scale(.97);}
@@ -127,6 +128,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
       <button data-v="notes" onclick="showView('notes')">Notes</button>
       <button data-v="students" onclick="showView('students')">Students</button>
       <button data-v="stories" onclick="showView('stories')">Success Stories</button>
+      <button data-v="support" onclick="showView('support')">Support <span class="badge-dot" id="ticketBadge" style="display:none;">0</span></button>
       <button data-v="settings" onclick="showView('settings')">Settings</button>
     </div>
     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark/light mode" id="themeToggleBtn">🌙</button>
@@ -486,6 +488,33 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
     </div>
   </div>
 
+  <!-- ================= SUPPORT (Tickets + FAQ) ================= -->
+  <div class="view" id="view-support">
+    <div class="section">
+      <div class="section-head"><span class="section-title">Support Tickets</span></div>
+      <div class="tab-toggle" style="margin-bottom:14px;">
+        <button id="ticketFilterOpenBtn" class="active" onclick="setTicketFilter('open')">Open</button>
+        <button id="ticketFilterAllBtn" onclick="setTicketFilter('all')">All</button>
+      </div>
+      <div id="ticketsList"><div class="empty-note">Loading…</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="section-title" style="font-size:16px;">FAQ Manager (Auto-Reply Answers)</span></div>
+      <div class="panel-card">
+        <label class="field-label">Keywords (comma-separated)</label>
+        <input type="text" id="faqKeywords" placeholder="e.g. password, forgot, reset">
+        <label class="field-label">Question (display label)</label>
+        <input type="text" id="faqQuestion" placeholder="e.g. Password bhool gaya?">
+        <label class="field-label">Answer</label>
+        <textarea id="faqAnswer" rows="3" placeholder="Solution likhein…"></textarea>
+        <div class="error-text" id="faqError"></div>
+        <button class="btn btn-primary" style="margin-top:14px;" onclick="submitFAQ()">Add FAQ</button>
+      </div>
+      <div id="faqList" style="margin-top:14px;"><div class="empty-note">Loading…</div></div>
+    </div>
+  </div>
+
   <!-- ================= SETTINGS ================= -->
   <div class="view" id="view-settings">
     <div class="section">
@@ -720,6 +749,7 @@ function showView(name){
   if(name==='jobs') loadJobsAdmin();
   if(name==='notes'){ loadNotesAdmin(); loadExamCategories(); }
   if(name==='stories') loadStoriesAdmin();
+  if(name==='support'){ loadTicketsAdmin(); loadFAQAdmin(); }
   if(name==='students') loadStudents();
   if(name==='dash') loadDashStats();
   if(name==='settings') loadAboutText();
@@ -1004,6 +1034,112 @@ async function deleteSuccessStory(id, photoPath){
   if(error){ toast('Delete fail: ' + error.message); return; }
   toast('Success story deleted.');
   loadStoriesAdmin();
+}
+
+/* ================= SUPPORT TICKETS ================= */
+let ticketFilter = 'open';
+function setTicketFilter(f){
+  ticketFilter = f;
+  document.getElementById('ticketFilterOpenBtn').classList.toggle('active', f==='open');
+  document.getElementById('ticketFilterAllBtn').classList.toggle('active', f==='all');
+  loadTicketsAdmin();
+}
+async function loadTicketsAdmin(){
+  const el = document.getElementById('ticketsList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  let query = sb.from('support_tickets').select('*').order('created_at', {ascending:false});
+  if(ticketFilter === 'open') query = query.eq('status', 'open');
+  const { data, error } = await query;
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+
+  // Update sidebar badge with open-ticket count
+  const { count } = await sb.from('support_tickets').select('*', {count:'exact', head:true}).eq('status', 'open');
+  const badge = document.getElementById('ticketBadge');
+  if(count && count > 0){ badge.textContent = count; badge.style.display = 'inline-block'; }
+  else { badge.style.display = 'none'; }
+
+  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">Koi ticket nahi hai.</div>'; return; }
+
+  // Fetch the relevant student profiles separately (no FK-based embed needed)
+  const userIds = [...new Set(data.map(t => t.user_id))];
+  const { data: profilesData } = await sb.from('profiles').select('id, full_name, email').in('id', userIds);
+  const profileMap = {};
+  (profilesData || []).forEach(p => { profileMap[p.id] = p; });
+
+  el.innerHTML = data.map(t => {
+    const p = profileMap[t.user_id];
+    return `
+    <div class="list-item" style="flex-direction:column; align-items:stretch;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div>
+          <p class="li-title">${esc(t.ticket_number)} <span style="color:${t.status==='resolved'?'var(--seal)':'var(--gold)'}; font-size:11px; font-weight:700;">${t.status==='resolved'?'RESOLVED':'OPEN'}</span></p>
+          <div class="li-meta"><span>${esc(p?.full_name || 'Unknown')}</span><span>${esc(p?.email || '')}</span><span>${new Date(t.created_at).toLocaleString('en-IN')}</span></div>
+        </div>
+      </div>
+      <p style="font-size:13px; color:var(--text-dim); margin:10px 0;">${esc(t.message)}</p>
+      ${t.admin_reply ? `<p style="font-size:12.5px; color:var(--text-mute); border-top:1px solid var(--line-soft); padding-top:8px; margin:0 0 10px;"><b>Your reply:</b> ${esc(t.admin_reply)}</p>` : ''}
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="reply_${t.id}" placeholder="Reply likhein…" value="${t.admin_reply?esc(t.admin_reply):''}" style="flex:1;">
+        <button class="btn btn-primary btn-xs" onclick="replyToTicket('${t.id}')">Send & Resolve</button>
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+async function replyToTicket(id){
+  const input = document.getElementById('reply_'+id);
+  const admin_reply = input.value.trim();
+  if(!admin_reply){ toast('Reply likhein.'); return; }
+  const { error } = await sb.from('support_tickets').update({ admin_reply, status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', id);
+  if(error){ toast('Reply fail: ' + error.message); return; }
+  toast('Reply bhej diya, ticket resolved.');
+  loadTicketsAdmin();
+}
+
+/* ================= FAQ MANAGER ================= */
+async function submitFAQ(){
+  const keywordsRaw = document.getElementById('faqKeywords').value.trim();
+  const question = document.getElementById('faqQuestion').value.trim();
+  const answer = document.getElementById('faqAnswer').value.trim();
+  const errEl = document.getElementById('faqError'); errEl.textContent = '';
+  if(!keywordsRaw || !question || !answer){ errEl.textContent = 'Sabhi fields zaroori hain.'; return; }
+  const keywords = keywordsRaw.split(',').map(k=>k.trim().toLowerCase()).filter(Boolean);
+  const { error } = await sb.from('faq_entries').insert({ keywords, question, answer });
+  if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
+  document.getElementById('faqKeywords').value = '';
+  document.getElementById('faqQuestion').value = '';
+  document.getElementById('faqAnswer').value = '';
+  toast('FAQ added.');
+  loadFAQAdmin();
+}
+async function loadFAQAdmin(){
+  const el = document.getElementById('faqList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('faq_entries').select('*').order('order_index').order('created_at', {ascending:false});
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">Koi FAQ add nahi hui abhi.</div>'; return; }
+  el.innerHTML = data.map(f => `
+    <div class="list-item">
+      <div>
+        <p class="li-title">${esc(f.question)} ${!f.is_active?'<span style="color:var(--stamp); font-size:11px;">(Hidden)</span>':''}</p>
+        <div class="li-meta"><span>${(f.keywords||[]).map(esc).join(', ')}</span></div>
+      </div>
+      <div class="li-actions">
+        <button class="btn btn-ghost btn-xs" onclick="toggleFAQActive('${f.id}', ${!f.is_active})">${f.is_active?'Hide':'Show'}</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteFAQ('${f.id}')">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+async function toggleFAQActive(id, newVal){
+  await sb.from('faq_entries').update({ is_active: newVal }).eq('id', id);
+  loadFAQAdmin();
+}
+async function deleteFAQ(id){
+  const { error } = await sb.from('faq_entries').delete().eq('id', id);
+  if(error){ toast('Delete fail: ' + error.message); return; }
+  toast('FAQ deleted.');
+  loadFAQAdmin();
 }
 
 async function loadDashStats(){
