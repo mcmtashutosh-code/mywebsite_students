@@ -40,6 +40,16 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 .pw-toggle:hover{color:var(--seal);}
 .btn-ghost{background:var(--bg-2); color:var(--text-dim); border:1px solid var(--line-soft);}
 .btn:disabled{opacity:.5;}
+
+/* ================= HOVER EFFECTS (all buttons) ================= */
+.btn, .pillnav button, .theme-toggle-btn, button{
+  transition:filter .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .08s ease;
+}
+.pillnav button:hover:not(.active){background:var(--line-soft); color:var(--text);}
+.theme-toggle-btn:hover{border-color:var(--seal); color:var(--seal); background:var(--bg-2);}
+.btn-primary:hover, .btn-danger:hover{filter:brightness(1.12); box-shadow:0 4px 14px -4px rgba(0,0,0,.35);}
+.btn-ghost:hover{border-color:var(--seal); color:var(--text);}
+.btn:active{transform:scale(.97);}
 .btn-full{width:100%;}
 .error-text{color:var(--stamp); font-size:12.5px; margin-top:8px; min-height:14px;}
 .field-error{border-color:var(--stamp) !important; box-shadow:0 0 0 1px var(--stamp);}
@@ -116,6 +126,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
       <button data-v="jobs" onclick="showView('jobs')">Jobs</button>
       <button data-v="notes" onclick="showView('notes')">Notes</button>
       <button data-v="students" onclick="showView('students')">Students</button>
+      <button data-v="stories" onclick="showView('stories')">Success Stories</button>
       <button data-v="settings" onclick="showView('settings')">Settings</button>
     </div>
     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark/light mode" id="themeToggleBtn">🌙</button>
@@ -449,6 +460,28 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
     </div>
   </div>
 
+  <!-- ================= SUCCESS STORIES ================= -->
+  <div class="view" id="view-stories">
+    <div class="section">
+      <div class="section-head"><span class="section-title">Success Stories</span></div>
+      <div class="panel-card">
+        <label class="field-label">Student Name</label>
+        <input type="text" id="ssName" placeholder="e.g. Rahul Kumar">
+        <label class="field-label">Exam / Result</label>
+        <input type="text" id="ssExamResult" placeholder="e.g. SSC CGL 2025 — Selected">
+        <label class="field-label">Short Message (testimonial)</label>
+        <textarea id="ssMessage" rows="3" placeholder="e.g. Dhyeodaya ke notes aur mock tests ne meri tayari bahut asaan bana di."></textarea>
+        <label class="field-label">Photo (optional)</label>
+        <input type="file" id="ssPhoto" accept="image/*">
+        <div class="error-text" id="ssError"></div>
+        <button class="btn btn-primary" id="ssSubmitBtn" style="margin-top:14px;" onclick="submitSuccessStory()">Add Success Story</button>
+      </div>
+
+      <div class="section-head" style="margin-top:18px;"><span class="section-title" style="font-size:16px;">Existing Stories</span></div>
+      <div id="storiesList"><div class="empty-note">Loading…</div></div>
+    </div>
+  </div>
+
   <!-- ================= SETTINGS ================= -->
   <div class="view" id="view-settings">
     <div class="section">
@@ -517,8 +550,18 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 <script>
 /* ================= THEME (dark/light) — applied immediately to avoid flash ================= */
 (function(){
-  const saved = localStorage.getItem('dhyeodaya_theme') || 'dark';
-  if(saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  const saved = localStorage.getItem('dhyeodaya_theme');
+  const systemPrefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  const useLight = saved ? (saved === 'light') : systemPrefersLight;
+  if(useLight) document.documentElement.setAttribute('data-theme', 'light');
+  if(!saved && window.matchMedia){
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e)=>{
+      if(localStorage.getItem('dhyeodaya_theme')) return;
+      if(e.matches) document.documentElement.setAttribute('data-theme', 'light');
+      else document.documentElement.removeAttribute('data-theme');
+      applyThemeIcon();
+    });
+  }
 })();
 function applyThemeIcon(){
   const btn = document.getElementById('themeToggleBtn');
@@ -542,6 +585,7 @@ const SUPABASE_URL = 'https://iyzujwixwfydmkzmhrxo.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_4t1qso9eT9lNU_aGnS8hiQ_zX3EGBXd';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const NOTES_BUCKET = 'notes-pdfs';
+const STUDENT_PHOTOS_BUCKET = 'student-photos';
 
 let currentUser = null, currentProfile = null;
 let noteCategoryForm = 'academic';
@@ -671,6 +715,7 @@ function showView(name){
   if(name==='videos') loadVideosAdmin();
   if(name==='jobs') loadJobsAdmin();
   if(name==='notes'){ loadNotesAdmin(); loadExamCategories(); }
+  if(name==='stories') loadStoriesAdmin();
   if(name==='students') loadStudents();
   if(name==='dash') loadDashStats();
   if(name==='settings') loadAboutText();
@@ -847,6 +892,78 @@ async function submitPasswordChange(){
 }
 
 /* ================= DASHBOARD ================= */
+/* ================= SUCCESS STORIES ================= */
+function studentPhotoUrl(path){
+  if(!path) return '';
+  const { data } = sb.storage.from(STUDENT_PHOTOS_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+async function submitSuccessStory(){
+  const student_name = document.getElementById('ssName').value.trim();
+  const exam_result = document.getElementById('ssExamResult').value.trim();
+  const message = document.getElementById('ssMessage').value.trim();
+  const fileInput = document.getElementById('ssPhoto');
+  const errEl = document.getElementById('ssError'); errEl.textContent = '';
+
+  if(!student_name || !exam_result){ errEl.textContent = 'Naam aur Exam/Result zaroori hai.'; return; }
+
+  document.getElementById('ssSubmitBtn').disabled = true;
+  let photo_path = null;
+  const file = fileInput.files[0];
+  if(file){
+    if(file.size > 5*1024*1024){ errEl.textContent = 'Photo 5MB se bada nahi hona chahiye.'; document.getElementById('ssSubmitBtn').disabled = false; return; }
+    photo_path = `stories/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const { error: upErr } = await sb.storage.from(STUDENT_PHOTOS_BUCKET).upload(photo_path, file, { upsert: false });
+    if(upErr){ errEl.textContent = 'Photo upload fail: ' + upErr.message; document.getElementById('ssSubmitBtn').disabled = false; return; }
+  }
+
+  const { error } = await sb.from('success_stories').insert({
+    student_name, exam_result, message, photo_path, created_by: currentUser.id
+  });
+  document.getElementById('ssSubmitBtn').disabled = false;
+  if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
+
+  document.getElementById('ssName').value = '';
+  document.getElementById('ssExamResult').value = '';
+  document.getElementById('ssMessage').value = '';
+  fileInput.value = '';
+  toast('Success story added.');
+  loadStoriesAdmin();
+}
+async function loadStoriesAdmin(){
+  const el = document.getElementById('storiesList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('success_stories').select('*').order('order_index').order('created_at', {ascending:false});
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">Koi success story add nahi hui abhi.</div>'; return; }
+  el.innerHTML = data.map(s=>`
+    <div class="list-item">
+      <div style="display:flex; align-items:center; gap:12px;">
+        ${s.photo_path ? `<img src="${studentPhotoUrl(s.photo_path)}" style="width:44px; height:44px; border-radius:50%; object-fit:cover;">` : `<div style="width:44px; height:44px; border-radius:50%; background:var(--bg-2); display:flex; align-items:center; justify-content:center; font-size:18px;">🎓</div>`}
+        <div>
+          <p class="li-title">${esc(s.student_name)} ${!s.is_active?'<span style="color:var(--stamp); font-size:11px;">(Hidden)</span>':''}</p>
+          <div class="li-meta"><span>${esc(s.exam_result)}</span></div>
+        </div>
+      </div>
+      <div class="li-actions">
+        <button class="btn btn-ghost btn-xs" onclick="toggleStoryActive('${s.id}', ${!s.is_active})">${s.is_active?'Hide':'Show'}</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteSuccessStory('${s.id}','${s.photo_path?esc(s.photo_path):''}')">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+async function toggleStoryActive(id, newVal){
+  await sb.from('success_stories').update({ is_active: newVal }).eq('id', id);
+  loadStoriesAdmin();
+}
+async function deleteSuccessStory(id, photoPath){
+  if(photoPath){ await sb.storage.from(STUDENT_PHOTOS_BUCKET).remove([photoPath]); }
+  const { error } = await sb.from('success_stories').delete().eq('id', id);
+  if(error){ toast('Delete fail: ' + error.message); return; }
+  toast('Success story deleted.');
+  loadStoriesAdmin();
+}
+
 async function loadDashStats(){
   const [{count:nc}, {count:vc}, {count:jc}, {count:noc}, visitStatsRes] = await Promise.all([
     sb.from('notices').select('*', {count:'exact', head:true}).eq('is_active', true),
