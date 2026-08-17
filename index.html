@@ -696,27 +696,55 @@ document.getElementById('yr').textContent = new Date().getFullYear();
 /* ================= VIEW ROUTING ================= */
 const GATED_VIEWS = ['notes', 'test', 'jobs', 'live'];
 let pendingGatedView = null;
+
+// Supabase's password-reset/email-confirmation links also use the URL hash
+// (e.g. #access_token=...&type=recovery) — never treat that as a view name.
+function isAuthHash(hash){
+  return /access_token|type=recovery|type=signup|error=/.test(hash);
+}
+
+// showView() renders the view immediately (synchronously) and then updates the
+// URL hash via pushState, so refresh/back-button restores the correct tab
+// without introducing any async delay that could break code relying on the
+// view already being visible right after calling showView().
 function showView(name){
+  renderView(name, true);
+}
+
+function renderView(name, updateHistory){
+  let resolved = name;
   if(GATED_VIEWS.includes(name) && !currentUser){
     pendingGatedView = name;
     toast('Please login to access this section.');
     openModal('authModal');
     setAuthTab('login');
-    return;
+    resolved = 'home';
   }
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  const el = document.getElementById('view-'+name);
-  if(el) el.classList.add('active');
-  document.querySelectorAll('#pillnav button').forEach(b=>b.classList.toggle('active', b.dataset.v===name));
+  const el = document.getElementById('view-'+resolved);
+  if(el){ el.classList.add('active'); }
+  else { document.getElementById('view-home').classList.add('active'); resolved = 'home'; }
+  document.querySelectorAll('#pillnav button').forEach(b=>b.classList.toggle('active', b.dataset.v===resolved));
   window.scrollTo({top:0, behavior:'smooth'});
-  if(name==='notes') loadNotes();
-  if(name==='jobs') loadJobs();
-  if(name==='live') loadVideos();
-  if(name==='notice') loadNoticesFull();
-  if(name==='test') renderTestAccess();
-  if(name==='about') loadAboutText();
-  if(name==='profile') renderProfile();
+  if(resolved==='notes') loadNotes();
+  if(resolved==='jobs') loadJobs();
+  if(resolved==='live') loadVideos();
+  if(resolved==='notice') loadNoticesFull();
+  if(resolved==='test') renderTestAccess();
+  if(resolved==='about') loadAboutText();
+  if(resolved==='profile') renderProfile();
+
+  if(updateHistory && location.hash.slice(1) !== resolved){
+    try{ history.pushState({view:resolved}, '', '#'+resolved); }catch(e){}
+  }
 }
+
+// Handles browser Back/Forward navigation only (pushState doesn't fire hashchange).
+window.addEventListener('popstate', ()=>{
+  const h = location.hash.slice(1);
+  if(isAuthHash(h)) return; // let Supabase's own auth handling deal with this
+  renderView(h || 'home', false);
+});
 
 function renderTestAccess(){
   const btn = document.getElementById('testCbtBtn');
@@ -1699,6 +1727,7 @@ async function init(){
   applyThemeIcon();
   await loadProfile();
   refreshAuthUI();
+  { const h = location.hash.slice(1); renderView(isAuthHash(h) ? 'home' : (h || 'home'), false); }
   await loadNoticesHome();
   await loadReachStats();
   loadSuccessStories('home');
