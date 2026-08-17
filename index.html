@@ -129,6 +129,12 @@ img{max-width:100%;}
 .faq-result-card{background:var(--bg-2); border:1px solid var(--line-soft); border-radius:12px; padding:14px 16px; margin-bottom:10px;}
 .faq-result-card .q{font-weight:700; font-size:13.5px; color:var(--gold); margin:0 0 6px;}
 .faq-result-card .a{font-size:13px; color:var(--text-dim); line-height:1.5; margin:0;}
+.faq-quick-item{border:1px solid var(--line-soft); border-radius:10px; margin-bottom:8px; overflow:hidden;}
+.faq-quick-q{width:100%; text-align:left; background:var(--bg-2); border:none; padding:12px 14px; font-size:13px; font-weight:600; color:var(--text); cursor:pointer; font-family:inherit; display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.faq-quick-q .arrow{transition:transform .2s; font-size:11px; color:var(--text-mute); flex-shrink:0;}
+.faq-quick-q.open .arrow{transform:rotate(180deg);}
+.faq-quick-a{max-height:0; overflow:hidden; transition:max-height .25s ease;}
+.faq-quick-a-inner{padding:12px 14px; font-size:12.5px; color:var(--text-dim); line-height:1.5; white-space:pre-line;}
 .quick-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:20px; cursor:pointer; transition:border-color .15s;}
 .quick-card:hover{border-color:var(--seal);}
 .quick-card .qi{width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:12px;}
@@ -546,7 +552,10 @@ footer b{color:var(--gold);}
     <div class="modal-head"><h2>Help & Support</h2><p class="modal-sub">Apni problem batayein, hum turant solution dhoondte hain</p></div>
 
     <div id="supportStepAsk">
-      <label class="field-label">Aapki Problem</label>
+      <label class="field-label">Common Questions</label>
+      <div id="supportQuickFAQs" style="margin-bottom:16px;"><div class="empty-note" style="padding:10px 0;">Loading…</div></div>
+
+      <label class="field-label">Ya apni problem type karein</label>
       <textarea id="supportMessage" rows="3" placeholder="e.g. Password bhool gaya, ya notes download nahi ho rahe..."></textarea>
       <div class="error-text" id="supportError"></div>
       <button class="btn-full" onclick="searchSupportFAQ()">Solution Dhoondo</button>
@@ -1078,6 +1087,37 @@ function openSupportModal(){
   document.getElementById('supportMessage').value = '';
   document.getElementById('supportError').textContent = '';
   openModal('supportModal');
+  loadQuickFAQs();
+}
+async function loadQuickFAQs(){
+  const el = document.getElementById('supportQuickFAQs');
+  if(!supportFAQCache){
+    const { data } = await sb.from('faq_entries').select('*').eq('is_active', true).order('order_index');
+    supportFAQCache = data || [];
+  }
+  if(!supportFAQCache.length){ el.innerHTML = ''; return; }
+  el.innerHTML = supportFAQCache.map((f, i) => `
+    <div class="faq-quick-item">
+      <button class="faq-quick-q" id="faqQ_${i}" onclick="toggleQuickFAQ(${i})">
+        <span>${esc(f.question)}</span><span class="arrow">▾</span>
+      </button>
+      <div class="faq-quick-a" id="faqA_${i}"><div class="faq-quick-a-inner">${esc(f.answer)}</div></div>
+    </div>
+  `).join('');
+}
+function toggleQuickFAQ(i){
+  const q = document.getElementById('faqQ_'+i);
+  const a = document.getElementById('faqA_'+i);
+  const isOpen = q.classList.contains('open');
+  // close any other open item (accordion behavior)
+  document.querySelectorAll('.faq-quick-q.open').forEach(el=>{
+    el.classList.remove('open');
+    el.nextElementSibling.style.maxHeight = null;
+  });
+  if(!isOpen){
+    q.classList.add('open');
+    a.style.maxHeight = a.scrollHeight + 'px';
+  }
 }
 function backToSupportAsk(){
   document.getElementById('supportStepAsk').style.display = 'block';
