@@ -130,7 +130,9 @@ img{max-width:100%;}
 .faq-result-card .q{font-weight:700; font-size:13.5px; color:var(--gold); margin:0 0 6px;}
 .faq-result-card .a{font-size:13px; color:var(--text-dim); line-height:1.5; margin:0;}
 .faq-quick-item{border:1px solid var(--line-soft); border-radius:10px; margin-bottom:8px; overflow:hidden;}
+.faq-quick-scroll{max-height:280px; overflow-y:auto; padding-right:4px;}
 .faq-quick-q{width:100%; text-align:left; background:var(--bg-2); border:none; padding:12px 14px; font-size:13px; font-weight:600; color:var(--text); cursor:pointer; font-family:inherit; display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.faq-quick-q:hover{transform:translateY(-2px); box-shadow:0 6px 14px -6px rgba(0,0,0,.4); background:var(--panel);}
 .faq-quick-q .arrow{transition:transform .2s; font-size:11px; color:var(--text-mute); flex-shrink:0;}
 .faq-quick-q.open .arrow{transform:rotate(180deg);}
 .faq-quick-a{max-height:0; overflow:hidden; transition:max-height .25s ease;}
@@ -553,9 +555,10 @@ footer b{color:var(--gold);}
 
     <div id="supportStepAsk">
       <label class="field-label">Common Questions</label>
-      <div id="supportQuickFAQs" style="margin-bottom:16px;"><div class="empty-note" style="padding:10px 0;">Loading…</div></div>
+      <input type="text" id="supportFAQSearch" placeholder="🔍 Search questions…" oninput="filterQuickFAQs()" style="margin-bottom:10px;">
+      <div id="supportQuickFAQs" class="faq-quick-scroll"><div class="empty-note" style="padding:10px 0;">Loading…</div></div>
 
-      <label class="field-label">Ya apni problem type karein</label>
+      <label class="field-label" style="margin-top:16px;">Ya apni problem type karein</label>
       <textarea id="supportMessage" rows="3" placeholder="e.g. Password bhool gaya, ya notes download nahi ho rahe..."></textarea>
       <div class="error-text" id="supportError"></div>
       <button class="btn-full" onclick="searchSupportFAQ()">Solution Dhoondo</button>
@@ -1090,20 +1093,34 @@ function openSupportModal(){
   loadQuickFAQs();
 }
 async function loadQuickFAQs(){
-  const el = document.getElementById('supportQuickFAQs');
   if(!supportFAQCache){
     const { data } = await sb.from('faq_entries').select('*').eq('is_active', true).order('order_index');
     supportFAQCache = data || [];
   }
-  if(!supportFAQCache.length){ el.innerHTML = ''; return; }
-  el.innerHTML = supportFAQCache.map((f, i) => `
+  document.getElementById('supportFAQSearch').value = '';
+  renderQuickFAQList(supportFAQCache.map((f,i)=>({...f, _idx:i})));
+}
+function renderQuickFAQList(list){
+  const el = document.getElementById('supportQuickFAQs');
+  if(!list.length){ el.innerHTML = '<div class="empty-note" style="padding:10px 0;">Koi matching question nahi mila.</div>'; return; }
+  el.innerHTML = list.map(f => `
     <div class="faq-quick-item">
-      <button class="faq-quick-q" id="faqQ_${i}" onclick="toggleQuickFAQ(${i})">
+      <button class="faq-quick-q" id="faqQ_${f._idx}" onclick="toggleQuickFAQ(${f._idx})">
         <span>${esc(f.question)}</span><span class="arrow">▾</span>
       </button>
-      <div class="faq-quick-a" id="faqA_${i}"><div class="faq-quick-a-inner">${esc(f.answer)}</div></div>
+      <div class="faq-quick-a" id="faqA_${f._idx}"><div class="faq-quick-a-inner">${esc(f.answer)}</div></div>
     </div>
   `).join('');
+}
+function filterQuickFAQs(){
+  if(!supportFAQCache) return;
+  const q = document.getElementById('supportFAQSearch').value.trim().toLowerCase();
+  const withIdx = supportFAQCache.map((f,i)=>({...f, _idx:i}));
+  if(!q){ renderQuickFAQList(withIdx); return; }
+  const filtered = withIdx.filter(f =>
+    f.question.toLowerCase().includes(q) || (f.keywords||[]).some(k=>k.toLowerCase().includes(q))
+  );
+  renderQuickFAQList(filtered);
 }
 function toggleQuickFAQ(i){
   const q = document.getElementById('faqQ_'+i);
