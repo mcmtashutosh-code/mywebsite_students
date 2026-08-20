@@ -573,6 +573,23 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
         <div class="error-text" id="aboutError"></div>
         <button class="btn btn-primary" style="margin-top:14px;" onclick="saveAboutText()">Save About Text</button>
       </div>
+
+      <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Founder Profile (shown on About page)</span></div>
+      <div class="panel-card">
+        <label class="field-label">Name</label>
+        <input type="text" id="founderName" placeholder="e.g. Ashutosh Kumar Dubey">
+        <label class="field-label">Title / Role</label>
+        <input type="text" id="founderTitle" placeholder="e.g. Founder, Dhyeodaya — Computer Science Faculty">
+        <label class="field-label">Badges (comma-separated, short highlights)</label>
+        <input type="text" id="founderBadges" placeholder="e.g. 10+ Years Teaching, TCS Placement Coordinator">
+        <label class="field-label">Bio (full description)</label>
+        <textarea id="founderBio" rows="6" placeholder="Full bio text…"></textarea>
+        <label class="field-label">Photo (optional)</label>
+        <input type="file" id="founderPhoto" accept="image/*">
+        <div id="founderCurrentPhotoNote" style="display:none; font-size:12px; color:var(--text-mute); margin-top:6px;">Ek photo already lagi hai. Nayi choose karoge to wahi replace ho jayegi.</div>
+        <div class="error-text" id="founderError"></div>
+        <button class="btn btn-primary" style="margin-top:14px;" onclick="saveFounderProfile()">Save Founder Profile</button>
+      </div>
     </div>
   </div>
 
@@ -792,7 +809,7 @@ function showView(name){
   if(name==='gallery') loadGalleryAdmin();
   if(name==='students') loadStudents();
   if(name==='dash') loadDashStats();
-  if(name==='settings') loadAboutText();
+  if(name==='settings'){ loadAboutText(); loadFounderProfile(); }
 }
 
 /* ================= STUDENTS (Premium management) ================= */
@@ -950,6 +967,56 @@ async function saveAboutText(){
   const { error } = await sb.from('site_settings').upsert({ key: 'about_text', value, updated_at: new Date().toISOString() });
   if(error){ errEl.textContent = error.message; return; }
   toast('About text updated successfully.');
+}
+
+/* ================= FOUNDER PROFILE ================= */
+let currentFounderPhotoPath = null;
+async function loadFounderProfile(){
+  const keys = ['founder_name','founder_title','founder_badges','founder_bio','founder_photo_path'];
+  const { data } = await sb.from('site_settings').select('key, value').in('key', keys);
+  const map = {};
+  (data || []).forEach(row => { map[row.key] = row.value; });
+  document.getElementById('founderName').value = map.founder_name || '';
+  document.getElementById('founderTitle').value = map.founder_title || '';
+  document.getElementById('founderBadges').value = map.founder_badges || '';
+  document.getElementById('founderBio').value = map.founder_bio || '';
+  currentFounderPhotoPath = map.founder_photo_path || null;
+  document.getElementById('founderCurrentPhotoNote').style.display = currentFounderPhotoPath ? 'block' : 'none';
+}
+async function saveFounderProfile(){
+  const name = document.getElementById('founderName').value.trim();
+  const title = document.getElementById('founderTitle').value.trim();
+  const badges = document.getElementById('founderBadges').value.trim();
+  const bio = document.getElementById('founderBio').value.trim();
+  const fileInput = document.getElementById('founderPhoto');
+  const errEl = document.getElementById('founderError'); errEl.textContent = '';
+  if(!name || !bio){ errEl.textContent = 'Name aur Bio zaroori hain.'; return; }
+
+  let photo_path = currentFounderPhotoPath;
+  const file = fileInput.files[0];
+  if(file){
+    if(file.size > 5*1024*1024){ errEl.textContent = 'Photo 5MB se bada nahi hona chahiye.'; return; }
+    const newPath = `founder/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const { error: upErr } = await sb.storage.from(STUDENT_PHOTOS_BUCKET).upload(newPath, file, { upsert: false });
+    if(upErr){ errEl.textContent = 'Photo upload fail: ' + upErr.message; return; }
+    if(currentFounderPhotoPath){ await sb.storage.from(STUDENT_PHOTOS_BUCKET).remove([currentFounderPhotoPath]); }
+    photo_path = newPath;
+  }
+
+  const rows = [
+    { key: 'founder_name', value: name },
+    { key: 'founder_title', value: title },
+    { key: 'founder_badges', value: badges },
+    { key: 'founder_bio', value: bio },
+    { key: 'founder_photo_path', value: photo_path || '' },
+  ].map(r => ({ ...r, updated_at: new Date().toISOString() }));
+
+  const { error } = await sb.from('site_settings').upsert(rows);
+  if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
+  currentFounderPhotoPath = photo_path;
+  fileInput.value = '';
+  document.getElementById('founderCurrentPhotoNote').style.display = photo_path ? 'block' : 'none';
+  toast('Founder profile updated.');
 }
 
 async function submitPasswordChange(){
