@@ -129,6 +129,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
       <button data-v="students" onclick="showView('students')">Students</button>
       <button data-v="stories" onclick="showView('stories')">Success Stories</button>
       <button data-v="support" onclick="showView('support')">Support <span class="badge-dot" id="ticketBadge" style="display:none;">0</span></button>
+      <button data-v="gallery" onclick="showView('gallery')">Gallery</button>
       <button data-v="settings" onclick="showView('settings')">Settings</button>
     </div>
     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark/light mode" id="themeToggleBtn">🌙</button>
@@ -515,6 +516,43 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
     </div>
   </div>
 
+  <!-- ================= GALLERY ================= -->
+  <div class="view" id="view-gallery">
+    <div class="section">
+      <div class="section-head"><span class="section-title" id="galFormHeading">Add Gallery Item</span></div>
+      <div class="panel-card">
+        <label class="field-label">Type</label>
+        <div class="tab-toggle">
+          <button id="galTypePhotoBtn" class="active" onclick="setGalleryType('photo')">Photo</button>
+          <button id="galTypeVideoBtn" onclick="setGalleryType('video')">Video (YouTube link)</button>
+        </div>
+        <label class="field-label">Title</label>
+        <input type="text" id="galTitle" placeholder="e.g. Annual Function 2026">
+        <label class="field-label">Description (optional)</label>
+        <textarea id="galDescription" rows="2" placeholder="Short description…"></textarea>
+
+        <div id="galPhotoField">
+          <label class="field-label">Photo</label>
+          <input type="file" id="galPhoto" accept="image/*">
+          <div id="galCurrentPhotoNote" style="display:none; font-size:12px; color:var(--text-mute); margin-top:6px;">Ek photo already lagi hai. Nayi choose karoge to wahi replace ho jayegi.</div>
+        </div>
+        <div id="galVideoField" style="display:none;">
+          <label class="field-label">YouTube Video URL</label>
+          <input type="text" id="galVideoUrl" placeholder="https://www.youtube.com/watch?v=...">
+        </div>
+
+        <div class="error-text" id="galError"></div>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <button class="btn btn-primary" id="galSubmitBtn" onclick="submitGalleryItem()">Add to Gallery</button>
+          <button class="btn btn-ghost" id="galCancelBtn" style="display:none;" onclick="cancelGalleryEdit()">Cancel Edit</button>
+        </div>
+      </div>
+
+      <div class="section-head" style="margin-top:18px;"><span class="section-title" style="font-size:16px;">Existing Items</span></div>
+      <div id="galleryList"><div class="empty-note">Loading…</div></div>
+    </div>
+  </div>
+
   <!-- ================= SETTINGS ================= -->
   <div class="view" id="view-settings">
     <div class="section">
@@ -619,6 +657,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_4t1qso9eT9lNU_aGnS8hiQ_zX3EGBXd';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const NOTES_BUCKET = 'notes-pdfs';
 const STUDENT_PHOTOS_BUCKET = 'student-photos';
+const GALLERY_BUCKET = 'gallery-media';
 
 let currentUser = null, currentProfile = null;
 let noteCategoryForm = 'academic';
@@ -750,6 +789,7 @@ function showView(name){
   if(name==='notes'){ loadNotesAdmin(); loadExamCategories(); }
   if(name==='stories') loadStoriesAdmin();
   if(name==='support'){ loadTicketsAdmin(); loadFAQAdmin(); }
+  if(name==='gallery') loadGalleryAdmin();
   if(name==='students') loadStudents();
   if(name==='dash') loadDashStats();
   if(name==='settings') loadAboutText();
@@ -1140,6 +1180,141 @@ async function deleteFAQ(id){
   if(error){ toast('Delete fail: ' + error.message); return; }
   toast('FAQ deleted.');
   loadFAQAdmin();
+}
+
+/* ================= GALLERY ================= */
+function galleryMediaUrl(path){
+  if(!path) return '';
+  const { data } = sb.storage.from(GALLERY_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+function youtubeThumbUrl(url){
+  const m = (url||'').match(/(?:youtu\.be\/|v=|embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : '';
+}
+
+let galleryType = 'photo';
+let editingGalleryId = null;
+let editingGalleryPhotoPath = null;
+
+function setGalleryType(type){
+  galleryType = type;
+  document.getElementById('galTypePhotoBtn').classList.toggle('active', type==='photo');
+  document.getElementById('galTypeVideoBtn').classList.toggle('active', type==='video');
+  document.getElementById('galPhotoField').style.display = type==='photo' ? 'block' : 'none';
+  document.getElementById('galVideoField').style.display = type==='video' ? 'block' : 'none';
+}
+
+function editGalleryItem(g){
+  editingGalleryId = g.id;
+  editingGalleryPhotoPath = g.photo_path || null;
+  setGalleryType(g.media_type);
+  document.getElementById('galTitle').value = g.title || '';
+  document.getElementById('galDescription').value = g.description || '';
+  document.getElementById('galVideoUrl').value = g.video_url || '';
+  document.getElementById('galPhoto').value = '';
+  document.getElementById('galCurrentPhotoNote').style.display = g.photo_path ? 'block' : 'none';
+  document.getElementById('galFormHeading').textContent = 'Edit Gallery Item';
+  document.getElementById('galSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('galCancelBtn').style.display = 'inline-block';
+  document.getElementById('galError').textContent = '';
+  document.querySelector('#view-gallery .panel-card').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function cancelGalleryEdit(){
+  editingGalleryId = null;
+  editingGalleryPhotoPath = null;
+  setGalleryType('photo');
+  document.getElementById('galTitle').value = '';
+  document.getElementById('galDescription').value = '';
+  document.getElementById('galVideoUrl').value = '';
+  document.getElementById('galPhoto').value = '';
+  document.getElementById('galCurrentPhotoNote').style.display = 'none';
+  document.getElementById('galFormHeading').textContent = 'Add Gallery Item';
+  document.getElementById('galSubmitBtn').textContent = 'Add to Gallery';
+  document.getElementById('galCancelBtn').style.display = 'none';
+  document.getElementById('galError').textContent = '';
+}
+
+async function submitGalleryItem(){
+  const title = document.getElementById('galTitle').value.trim();
+  const description = document.getElementById('galDescription').value.trim();
+  const errEl = document.getElementById('galError'); errEl.textContent = '';
+  if(!title){ errEl.textContent = 'Title zaroori hai.'; return; }
+
+  let photo_path = editingGalleryId ? editingGalleryPhotoPath : null;
+  let video_url = null;
+
+  if(galleryType === 'photo'){
+    const fileInput = document.getElementById('galPhoto');
+    const file = fileInput.files[0];
+    if(!editingGalleryId && !file){ errEl.textContent = 'Photo choose karein.'; return; }
+    if(file){
+      if(file.size > 8*1024*1024){ errEl.textContent = 'Photo 8MB se bada nahi hona chahiye.'; return; }
+      document.getElementById('galSubmitBtn').disabled = true;
+      const newPath = `gallery/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const { error: upErr } = await sb.storage.from(GALLERY_BUCKET).upload(newPath, file, { upsert: false });
+      if(upErr){ errEl.textContent = 'Upload fail: ' + upErr.message; document.getElementById('galSubmitBtn').disabled = false; return; }
+      if(editingGalleryId && editingGalleryPhotoPath){ await sb.storage.from(GALLERY_BUCKET).remove([editingGalleryPhotoPath]); }
+      photo_path = newPath;
+    }
+  } else {
+    video_url = document.getElementById('galVideoUrl').value.trim();
+    if(!video_url){ errEl.textContent = 'YouTube URL daalein.'; return; }
+  }
+
+  document.getElementById('galSubmitBtn').disabled = true;
+  let error;
+  if(editingGalleryId){
+    ({ error } = await sb.from('gallery_items').update({ media_type: galleryType, title, description, photo_path, video_url }).eq('id', editingGalleryId));
+  } else {
+    ({ error } = await sb.from('gallery_items').insert({ media_type: galleryType, title, description, photo_path, video_url, created_by: currentUser.id }));
+  }
+  document.getElementById('galSubmitBtn').disabled = false;
+  if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
+
+  const wasEditing = !!editingGalleryId;
+  cancelGalleryEdit();
+  toast(wasEditing ? 'Gallery item updated.' : 'Gallery item added.');
+  loadGalleryAdmin();
+}
+
+async function loadGalleryAdmin(){
+  const el = document.getElementById('galleryList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('gallery_items').select('*').order('order_index').order('created_at', {ascending:false});
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">Gallery khaali hai.</div>'; return; }
+  el.innerHTML = data.map(g=>{
+    const thumb = g.media_type === 'photo' ? galleryMediaUrl(g.photo_path) : youtubeThumbUrl(g.video_url);
+    return `
+    <div class="list-item">
+      <div style="display:flex; align-items:center; gap:12px;">
+        ${thumb ? `<img src="${thumb}" style="width:56px; height:42px; border-radius:6px; object-fit:cover;">` : `<div style="width:56px; height:42px; border-radius:6px; background:var(--bg-2); display:flex; align-items:center; justify-content:center; font-size:16px;">${g.media_type==='video'?'🎥':'🖼️'}</div>`}
+        <div>
+          <p class="li-title">${esc(g.title)} ${!g.is_active?'<span style="color:var(--stamp); font-size:11px;">(Hidden)</span>':''}</p>
+          <div class="li-meta"><span>${g.media_type==='video'?'Video':'Photo'}</span></div>
+        </div>
+      </div>
+      <div class="li-actions">
+        <button class="btn btn-ghost btn-xs" onclick='editGalleryItem(${JSON.stringify(g).replace(/'/g,"&#39;")})'>Edit</button>
+        <button class="btn btn-ghost btn-xs" onclick="toggleGalleryActive('${g.id}', ${!g.is_active})">${g.is_active?'Hide':'Show'}</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteGalleryItem('${g.id}','${g.photo_path?esc(g.photo_path):''}')">Delete</button>
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+async function toggleGalleryActive(id, newVal){
+  await sb.from('gallery_items').update({ is_active: newVal }).eq('id', id);
+  loadGalleryAdmin();
+}
+async function deleteGalleryItem(id, photoPath){
+  if(editingGalleryId === id) cancelGalleryEdit();
+  if(photoPath){ await sb.storage.from(GALLERY_BUCKET).remove([photoPath]); }
+  const { error } = await sb.from('gallery_items').delete().eq('id', id);
+  if(error){ toast('Delete fail: ' + error.message); return; }
+  toast('Gallery item deleted.');
+  loadGalleryAdmin();
 }
 
 async function loadDashStats(){
