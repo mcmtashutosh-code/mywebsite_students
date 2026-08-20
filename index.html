@@ -550,16 +550,16 @@ footer b{color:var(--gold);}
     <div class="section">
       <div class="section-head"><span class="section-title"><span class="no">👤</span>Meet the Founder</span></div>
       <div class="founder-card">
-        <div class="founder-photo-fallback">🎓</div>
+        <div id="founderPhotoWrap"><div class="founder-photo-fallback">🎓</div></div>
         <div class="founder-body">
-          <h3 class="founder-name">Ashutosh Kumar Dubey</h3>
-          <p class="founder-title">Founder, Dhyeodaya — Computer Science Faculty & Full-Stack Developer</p>
-          <div class="founder-badges">
+          <h3 class="founder-name" id="founderNameDisplay">Ashutosh Kumar Dubey</h3>
+          <p class="founder-title" id="founderTitleDisplay">Founder, Dhyeodaya — Computer Science Faculty & Full-Stack Developer</p>
+          <div class="founder-badges" id="founderBadgesDisplay">
             <span class="founder-badge">10+ Years Teaching</span>
             <span class="founder-badge">TCS Placement Coordinator</span>
             <span class="founder-badge">IGNOU Academic Counsellor</span>
           </div>
-          <p class="founder-bio">Dhyeodaya is founded and built by Ashutosh Kumar Dubey — a Computer Science faculty member with over 10 years of teaching experience and a full-stack developer with hands-on experience building production EdTech platforms.
+          <p class="founder-bio" id="founderBioDisplay">Dhyeodaya is founded and built by Ashutosh Kumar Dubey — a Computer Science faculty member with over 10 years of teaching experience and a full-stack developer with hands-on experience building production EdTech platforms.
 
 He currently teaches Discrete Mathematics, Python, Computer Architecture, and Operating Systems, and serves as the TCS Placement Coordinator at his college, having personally guided 25+ students through the TCS recruitment process — resulting in 14+ final selections.
 
@@ -1138,6 +1138,27 @@ async function loadAboutText(){
   if(error || !data){ el.textContent = 'Dhyeodaya is a dedicated EdTech platform for Indian exam aspirants.'; return; }
   el.textContent = data.value;
   loadSuccessStories('about');
+  loadFounderProfile();
+}
+
+async function loadFounderProfile(){
+  const keys = ['founder_name','founder_title','founder_badges','founder_bio','founder_photo_path'];
+  const { data, error } = await sb.from('site_settings').select('key, value').in('key', keys);
+  if(error || !data || !data.length) return; // keep the default fallback content already in the HTML
+  const map = {};
+  data.forEach(row => { map[row.key] = row.value; });
+
+  if(map.founder_name) document.getElementById('founderNameDisplay').textContent = map.founder_name;
+  if(map.founder_title) document.getElementById('founderTitleDisplay').textContent = map.founder_title;
+  if(map.founder_bio) document.getElementById('founderBioDisplay').textContent = map.founder_bio;
+  if(map.founder_badges){
+    const badges = map.founder_badges.split(',').map(b=>b.trim()).filter(Boolean);
+    document.getElementById('founderBadgesDisplay').innerHTML = badges.map(b=>`<span class="founder-badge">${esc(b)}</span>`).join('');
+  }
+  if(map.founder_photo_path){
+    const { data: urlData } = sb.storage.from('student-photos').getPublicUrl(map.founder_photo_path);
+    document.getElementById('founderPhotoWrap').innerHTML = `<img src="${urlData.publicUrl}" alt="${esc(map.founder_name||'Founder')}" style="width:88px; height:88px; border-radius:50%; object-fit:cover; border:2px solid var(--gold); flex-shrink:0;">`;
+  }
 }
 
 /* ================= SUCCESS STORIES ================= */
