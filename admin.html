@@ -507,6 +507,13 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
         <input type="text" id="faqKeywords" placeholder="e.g. password, forgot, reset">
         <label class="field-label">Question (display label)</label>
         <input type="text" id="faqQuestion" placeholder="e.g. Password bhool gaya?">
+        <label class="field-label">Category</label>
+        <select id="faqCategory">
+          <option value="account">Account</option>
+          <option value="notes">Notes</option>
+          <option value="exams_jobs">Test & Jobs</option>
+          <option value="general" selected>General</option>
+        </select>
         <label class="field-label">Answer</label>
         <textarea id="faqAnswer" rows="3" placeholder="Solution likhein…"></textarea>
         <div class="error-text" id="faqError"></div>
@@ -1247,14 +1254,16 @@ async function replyToTicket(id){
 }
 
 /* ================= FAQ MANAGER ================= */
+const FAQ_CATEGORY_LABELS = { account:'Account', notes:'Notes', exams_jobs:'Test & Jobs', general:'General' };
 async function submitFAQ(){
   const keywordsRaw = document.getElementById('faqKeywords').value.trim();
   const question = document.getElementById('faqQuestion').value.trim();
+  const category = document.getElementById('faqCategory').value;
   const answer = document.getElementById('faqAnswer').value.trim();
   const errEl = document.getElementById('faqError'); errEl.textContent = '';
   if(!keywordsRaw || !question || !answer){ errEl.textContent = 'Sabhi fields zaroori hain.'; return; }
   const keywords = keywordsRaw.split(',').map(k=>k.trim().toLowerCase()).filter(Boolean);
-  const { error } = await sb.from('faq_entries').insert({ keywords, question, answer });
+  const { error } = await sb.from('faq_entries').insert({ keywords, question, answer, category });
   if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
   document.getElementById('faqKeywords').value = '';
   document.getElementById('faqQuestion').value = '';
@@ -1272,7 +1281,7 @@ async function loadFAQAdmin(){
     <div class="list-item">
       <div>
         <p class="li-title">${esc(f.question)} ${!f.is_active?'<span style="color:var(--stamp); font-size:11px;">(Hidden)</span>':''}</p>
-        <div class="li-meta"><span>${(f.keywords||[]).map(esc).join(', ')}</span></div>
+        <div class="li-meta"><span>${FAQ_CATEGORY_LABELS[f.category] || 'General'}</span><span>${(f.keywords||[]).map(esc).join(', ')}</span></div>
       </div>
       <div class="li-actions">
         <button class="btn btn-ghost btn-xs" onclick="toggleFAQActive('${f.id}', ${!f.is_active})">${f.is_active?'Hide':'Show'}</button>
