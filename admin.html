@@ -2037,15 +2037,25 @@ async function loadNotesAdmin(){
   el.innerHTML = data.map(n=>`
     <div class="list-item">
       <div>
-        <p class="li-title">Topic: ${esc(n.topic)}</p>
+        <p class="li-title">${n.is_featured?'⭐ ':''}Topic: ${esc(n.topic)}</p>
         <div class="li-meta"><span>${esc(n.category)}</span><span>Subject: ${esc(n.subject)}</span><span>${esc(n.class_or_exam)}</span><span>${accessLabel(n.access_mode)}</span>${(n.exam_categories||[]).map(t=>`<span>${esc(t)}</span>`).join('')}</div>
       </div>
       <div class="li-actions">
+        <button class="btn btn-ghost btn-xs" onclick="toggleNoteFeatured('${n.id}', ${!n.is_featured})">${n.is_featured?'Unfeature':'⭐ Feature'}</button>
         <button class="btn btn-ghost btn-xs" onclick="openIndexManager('${n.id}','${esc(n.topic).replace(/'/g,"\\'")}')">Index</button>
         <button class="btn btn-danger btn-xs" onclick="deleteNote('${n.id}','${esc(n.file_path)}')">Delete</button>
       </div>
     </div>
   `).join('');
+}
+async function toggleNoteFeatured(id, newVal){
+  const { data, error } = await sb.from('notes').select('id').eq('is_featured', true);
+  if(newVal && data && data.length >= 6){
+    toast('Maximum 6 notes ko feature kar sakte hain. Pehle kisi ko unfeature karein.');
+    return;
+  }
+  await sb.from('notes').update({ is_featured: newVal }).eq('id', id);
+  loadNotesAdmin();
 }
 async function deleteNote(id, filePath){
   if(!confirm('Delete this note? The file will also be removed.')) return;
