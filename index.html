@@ -85,7 +85,17 @@ img{max-width:100%;}
 @media (max-width:760px){
   .navbar-inner{flex-wrap:wrap;}
   .pillnav{order:3; width:100%;}
+  .nav-dropdown{display:none;}
 }
+
+/* ================= EXAMS DROPDOWN (navbar) ================= */
+.nav-dropdown{position:relative;}
+.nav-dropdown-btn{background:var(--panel); border:1px solid var(--line-soft); color:var(--text-dim); font-family:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:999px; cursor:pointer; white-space:nowrap;}
+.nav-dropdown-btn:hover{border-color:var(--seal); color:var(--text);}
+.nav-dropdown-panel{display:none; position:absolute; top:calc(100% + 8px); left:0; min-width:200px; background:var(--panel); border:1px solid var(--line-soft); border-radius:12px; padding:8px; box-shadow:0 12px 30px -10px rgba(0,0,0,.5); z-index:60;}
+.nav-dropdown-panel.open{display:block;}
+.nav-dropdown-panel button{display:block; width:100%; text-align:left; background:none; border:none; color:var(--text-dim); font-family:inherit; font-size:13.5px; padding:9px 12px; border-radius:8px; cursor:pointer;}
+.nav-dropdown-panel button:hover{background:var(--bg-2); color:var(--seal);}
 
 /* ---------- Hero: Admit Card / Ledger stub ---------- */
 .hero{padding:44px 0 30px;}
@@ -366,6 +376,12 @@ footer b{color:var(--gold);}
   <div class="navbar-inner">
     <div class="brand" onclick="showView('home')">
       <img src="logo-navbar.png" alt="Dhyeodaya" class="navbar-logo-img">
+    </div>
+    <div class="nav-dropdown" id="examsDropdown">
+      <button class="nav-dropdown-btn" onclick="toggleExamsDropdown(event)">Exams ▾</button>
+      <div class="nav-dropdown-panel" id="examsDropdownPanel">
+        <div class="empty-note" style="padding:12px;">Loading…</div>
+      </div>
     </div>
     <div class="pillnav" id="pillnav">
       <button data-v="home" class="active" onclick="showView('home')">Home</button>
@@ -1037,6 +1053,14 @@ async function doLogin(){
     pendingGatedView = null;
     showView(target);
   }
+  if(pendingExamJump){
+    const exam = pendingExamJump;
+    pendingExamJump = null;
+    notesCategory = 'competitive';
+    document.querySelectorAll('#notesCatChips .chip').forEach(c=>c.classList.toggle('sel', c.dataset.c==='competitive'));
+    await loadNotesExamChips();
+    setNotesExamFilter(exam);
+  }
 }
 
 async function doSignup(){
@@ -1323,6 +1347,43 @@ function setHomeFAQCategory(cat){
   const base = cat==='all' ? supportFAQCache : supportFAQCache.filter(f=>(f.category||'general')===cat);
   renderFAQAccordion('homeFAQList', 'hf', base.map((f,i)=>({...f, _idx:i})));
 }
+/* ================= EXAMS DROPDOWN (navbar) ================= */
+let examsDropdownLoaded = false;
+let pendingExamJump = null;
+async function toggleExamsDropdown(e){
+  e.stopPropagation();
+  const panel = document.getElementById('examsDropdownPanel');
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.nav-dropdown-panel.open').forEach(p=>p.classList.remove('open'));
+  if(isOpen) return;
+  panel.classList.add('open');
+  if(!examsDropdownLoaded){
+    const { data, error } = await sb.from('note_exam_categories').select('*').order('name');
+    const cats = (!error && data) ? data.map(c=>c.name) : [];
+    panel.innerHTML = cats.length
+      ? cats.map(name => `<button onclick="jumpToExam('${esc(name).replace(/'/g,"\\'")}')">${esc(name)}</button>`).join('')
+      : '<div class="empty-note" style="padding:8px 12px;">No exam categories yet.</div>';
+    examsDropdownLoaded = true;
+  }
+}
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('.nav-dropdown-panel.open').forEach(p=>p.classList.remove('open'));
+});
+
+async function jumpToExam(examName){
+  document.getElementById('examsDropdownPanel').classList.remove('open');
+  if(!currentUser){
+    pendingExamJump = examName;
+    showView('notes'); // triggers login modal via existing gating logic
+    return;
+  }
+  showView('notes');
+  notesCategory = 'competitive';
+  document.querySelectorAll('#notesCatChips .chip').forEach(c=>c.classList.toggle('sel', c.dataset.c==='competitive'));
+  await loadNotesExamChips();
+  setNotesExamFilter(examName);
+}
+
 function backToSupportAsk(){
   document.getElementById('supportStepAsk').style.display = 'block';
   document.getElementById('supportStepResult').style.display = 'none';
