@@ -450,6 +450,7 @@ footer b{color:var(--gold);}
 
     <div class="section" id="homeFAQSection" style="display:none;">
       <div class="section-head"><span class="section-title"><span class="no">?</span>Frequently Asked Questions</span></div>
+      <div class="chiprow" id="homeFAQTabs"></div>
       <div id="homeFAQList"></div>
     </div>
   </div>
@@ -662,6 +663,7 @@ Dhyeodaya was built from this same experience — combining real classroom teach
 
     <div id="supportStepAsk">
       <label class="field-label">Common Questions</label>
+      <div class="chiprow" id="supportFAQTabs" style="margin-bottom:10px;"></div>
       <input type="text" id="supportFAQSearch" placeholder="🔍 Search questions…" oninput="filterQuickFAQs()" style="margin-bottom:10px;">
       <div id="supportQuickFAQs" class="faq-quick-scroll"><div class="empty-note" style="padding:10px 0;">Loading…</div></div>
 
@@ -1229,6 +1231,21 @@ let successStoriesCache = null;
 /* ================= HELP / SUPPORT (FAQ auto-reply + ticket fallback) ================= */
 let supportFAQCache = null;
 let lastSupportMessage = '';
+const FAQ_CATEGORY_LABELS = { account:'Account', notes:'Notes', exams_jobs:'Test & Jobs', general:'General' };
+let homeFAQCategory = 'all';
+let supportFAQCategory = 'all';
+
+function renderFAQTabs(tabsId, activeCat, selectFnName){
+  const el = document.getElementById(tabsId);
+  if(!el) return;
+  if(!supportFAQCache || !supportFAQCache.length){ el.innerHTML = ''; return; }
+  const cats = [...new Set(supportFAQCache.map(f=>f.category || 'general'))];
+  const chips = ['all', ...cats];
+  el.innerHTML = chips.map(c => {
+    const label = c === 'all' ? 'All' : (FAQ_CATEGORY_LABELS[c] || 'General');
+    return `<button class="chip ${c===activeCat?'sel':''}" onclick="${selectFnName}('${c}')">${label}</button>`;
+  }).join('');
+}
 
 function openSupportModal(){
   if(!currentUser){ toast('Please login to use Help & Support.'); openModal('authModal'); return; }
@@ -1244,7 +1261,13 @@ async function loadQuickFAQs(){
     supportFAQCache = data || [];
   }
   document.getElementById('supportFAQSearch').value = '';
-  renderFAQAccordion('supportQuickFAQs', 'sq', supportFAQCache.map((f,i)=>({...f, _idx:i})));
+  setSupportFAQCategory('all');
+}
+function setSupportFAQCategory(cat){
+  supportFAQCategory = cat;
+  renderFAQTabs('supportFAQTabs', cat, 'setSupportFAQCategory');
+  const base = cat==='all' ? supportFAQCache : supportFAQCache.filter(f=>(f.category||'general')===cat);
+  renderFAQAccordion('supportQuickFAQs', 'sq', base.map((f,i)=>({...f, _idx:i})));
 }
 function renderFAQAccordion(containerId, prefix, list){
   const el = document.getElementById(containerId);
@@ -1262,7 +1285,8 @@ function renderFAQAccordion(containerId, prefix, list){
 function filterQuickFAQs(){
   if(!supportFAQCache) return;
   const q = document.getElementById('supportFAQSearch').value.trim().toLowerCase();
-  const withIdx = supportFAQCache.map((f,i)=>({...f, _idx:i}));
+  const base = supportFAQCategory==='all' ? supportFAQCache : supportFAQCache.filter(f=>(f.category||'general')===supportFAQCategory);
+  const withIdx = base.map((f,i)=>({...f, _idx:i}));
   if(!q){ renderFAQAccordion('supportQuickFAQs', 'sq', withIdx); return; }
   const filtered = withIdx.filter(f =>
     f.question.toLowerCase().includes(q) || (f.keywords||[]).some(k=>k.toLowerCase().includes(q))
@@ -1291,7 +1315,13 @@ async function loadHomeFAQs(){
   }
   if(!supportFAQCache.length){ section.style.display = 'none'; return; }
   section.style.display = 'block';
-  renderFAQAccordion('homeFAQList', 'hf', supportFAQCache.map((f,i)=>({...f, _idx:i})));
+  setHomeFAQCategory('all');
+}
+function setHomeFAQCategory(cat){
+  homeFAQCategory = cat;
+  renderFAQTabs('homeFAQTabs', cat, 'setHomeFAQCategory');
+  const base = cat==='all' ? supportFAQCache : supportFAQCache.filter(f=>(f.category||'general')===cat);
+  renderFAQAccordion('homeFAQList', 'hf', base.map((f,i)=>({...f, _idx:i})));
 }
 function backToSupportAsk(){
   document.getElementById('supportStepAsk').style.display = 'block';
