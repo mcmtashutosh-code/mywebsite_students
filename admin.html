@@ -130,6 +130,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
       <button data-v="stories" onclick="showView('stories')">Success Stories</button>
       <button data-v="support" onclick="showView('support')">Support <span class="badge-dot" id="ticketBadge" style="display:none;">0</span></button>
       <button data-v="gallery" onclick="showView('gallery')">Gallery</button>
+      <button data-v="banners" onclick="showView('banners')">Banners</button>
       <button data-v="settings" onclick="showView('settings')">Settings</button>
     </div>
     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark/light mode" id="themeToggleBtn">🌙</button>
@@ -560,6 +561,31 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
     </div>
   </div>
 
+  <!-- ================= BANNERS (home page carousel) ================= -->
+  <div class="view" id="view-banners">
+    <div class="section">
+      <div class="section-head"><span class="section-title" id="bannerFormHeading">Add Banner</span></div>
+      <div class="panel-card">
+        <label class="field-label">Title (internal label / alt text)</label>
+        <input type="text" id="bannerTitle" placeholder="e.g. New SSC CGL Batch Announcement">
+        <label class="field-label">Image</label>
+        <input type="file" id="bannerImage" accept="image/*">
+        <p style="font-size:11.5px; color:var(--text-mute); margin:6px 0 0;">Recommended: wide banner image, roughly 1200×450px, under 3MB.</p>
+        <div id="bannerCurrentImageNote" style="display:none; font-size:12px; color:var(--text-mute); margin-top:6px;">Ek image already lagi hai. Nayi choose karoge to wahi replace ho jayegi.</div>
+        <label class="field-label">Link URL (optional — where clicking the banner goes)</label>
+        <input type="text" id="bannerLinkUrl" placeholder="e.g. https://dhyeodaya.in/#jobs">
+        <div class="error-text" id="bannerError"></div>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <button class="btn btn-primary" id="bannerSubmitBtn" onclick="submitBanner()">Add Banner</button>
+          <button class="btn btn-ghost" id="bannerCancelBtn" style="display:none;" onclick="cancelBannerEdit()">Cancel Edit</button>
+        </div>
+      </div>
+
+      <div class="section-head" style="margin-top:18px;"><span class="section-title" style="font-size:16px;">Existing Banners</span></div>
+      <div id="bannersList"><div class="empty-note">Loading…</div></div>
+    </div>
+  </div>
+
   <!-- ================= SETTINGS ================= -->
   <div class="view" id="view-settings">
     <div class="section">
@@ -699,6 +725,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const NOTES_BUCKET = 'notes-pdfs';
 const STUDENT_PHOTOS_BUCKET = 'student-photos';
 const GALLERY_BUCKET = 'gallery-media';
+const BANNER_BUCKET = 'banner-images';
 
 let currentUser = null, currentProfile = null;
 let noteCategoryForm = 'academic';
@@ -831,6 +858,7 @@ function showView(name){
   if(name==='stories') loadStoriesAdmin();
   if(name==='support'){ loadTicketsAdmin(); loadFAQAdmin(); }
   if(name==='gallery') loadGalleryAdmin();
+  if(name==='banners') loadBannersAdmin();
   if(name==='students') loadStudents();
   if(name==='dash') loadDashStats();
   if(name==='settings'){ loadAboutText(); loadFounderProfile(); loadSocialLinks(); }
@@ -1434,6 +1462,111 @@ async function deleteGalleryItem(id, photoPath){
   if(error){ toast('Delete fail: ' + error.message); return; }
   toast('Gallery item deleted.');
   loadGalleryAdmin();
+}
+
+/* ================= BANNERS ================= */
+function bannerImageUrl(path){
+  if(!path) return '';
+  const { data } = sb.storage.from(BANNER_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+let editingBannerId = null;
+let editingBannerImagePath = null;
+
+function editBanner(b){
+  editingBannerId = b.id;
+  editingBannerImagePath = b.image_path || null;
+  document.getElementById('bannerTitle').value = b.title || '';
+  document.getElementById('bannerLinkUrl').value = b.link_url || '';
+  document.getElementById('bannerImage').value = '';
+  document.getElementById('bannerCurrentImageNote').style.display = b.image_path ? 'block' : 'none';
+  document.getElementById('bannerFormHeading').textContent = 'Edit Banner';
+  document.getElementById('bannerSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('bannerCancelBtn').style.display = 'inline-block';
+  document.getElementById('bannerError').textContent = '';
+  document.querySelector('#view-banners .panel-card').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function cancelBannerEdit(){
+  editingBannerId = null;
+  editingBannerImagePath = null;
+  document.getElementById('bannerTitle').value = '';
+  document.getElementById('bannerLinkUrl').value = '';
+  document.getElementById('bannerImage').value = '';
+  document.getElementById('bannerCurrentImageNote').style.display = 'none';
+  document.getElementById('bannerFormHeading').textContent = 'Add Banner';
+  document.getElementById('bannerSubmitBtn').textContent = 'Add Banner';
+  document.getElementById('bannerCancelBtn').style.display = 'none';
+  document.getElementById('bannerError').textContent = '';
+}
+async function submitBanner(){
+  const title = document.getElementById('bannerTitle').value.trim();
+  const link_url = document.getElementById('bannerLinkUrl').value.trim();
+  const fileInput = document.getElementById('bannerImage');
+  const errEl = document.getElementById('bannerError'); errEl.textContent = '';
+  if(!title){ errEl.textContent = 'Title zaroori hai.'; return; }
+
+  let image_path = editingBannerId ? editingBannerImagePath : null;
+  const file = fileInput.files[0];
+  if(!editingBannerId && !file){ errEl.textContent = 'Image choose karein.'; return; }
+  if(file){
+    if(file.size > 3*1024*1024){ errEl.textContent = 'Image 3MB se badi nahi honi chahiye.'; return; }
+    document.getElementById('bannerSubmitBtn').disabled = true;
+    const newPath = `banners/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const { error: upErr } = await sb.storage.from(BANNER_BUCKET).upload(newPath, file, { upsert: false });
+    if(upErr){ errEl.textContent = 'Upload fail: ' + upErr.message; document.getElementById('bannerSubmitBtn').disabled = false; return; }
+    if(editingBannerId && editingBannerImagePath){ await sb.storage.from(BANNER_BUCKET).remove([editingBannerImagePath]); }
+    image_path = newPath;
+  }
+
+  document.getElementById('bannerSubmitBtn').disabled = true;
+  let error;
+  if(editingBannerId){
+    ({ error } = await sb.from('banners').update({ title, image_path, link_url: link_url || null }).eq('id', editingBannerId));
+  } else {
+    ({ error } = await sb.from('banners').insert({ title, image_path, link_url: link_url || null, created_by: currentUser.id }));
+  }
+  document.getElementById('bannerSubmitBtn').disabled = false;
+  if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
+
+  const wasEditing = !!editingBannerId;
+  cancelBannerEdit();
+  toast(wasEditing ? 'Banner updated.' : 'Banner added.');
+  loadBannersAdmin();
+}
+async function loadBannersAdmin(){
+  const el = document.getElementById('bannersList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('banners').select('*').order('order_index').order('created_at', {ascending:false});
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">Koi banner add nahi hua abhi.</div>'; return; }
+  el.innerHTML = data.map(b=>`
+    <div class="list-item">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <img src="${bannerImageUrl(b.image_path)}" style="width:80px; height:32px; border-radius:6px; object-fit:cover;">
+        <div>
+          <p class="li-title">${esc(b.title)} ${!b.is_active?'<span style="color:var(--stamp); font-size:11px;">(Hidden)</span>':''}</p>
+          <div class="li-meta">${b.link_url?`<span>${esc(b.link_url)}</span>`:'<span>No link</span>'}</div>
+        </div>
+      </div>
+      <div class="li-actions">
+        <button class="btn btn-ghost btn-xs" onclick='editBanner(${JSON.stringify(b).replace(/'/g,"&#39;")})'>Edit</button>
+        <button class="btn btn-ghost btn-xs" onclick="toggleBannerActive('${b.id}', ${!b.is_active})">${b.is_active?'Hide':'Show'}</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteBanner('${b.id}','${esc(b.image_path)}')">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+async function toggleBannerActive(id, newVal){
+  await sb.from('banners').update({ is_active: newVal }).eq('id', id);
+  loadBannersAdmin();
+}
+async function deleteBanner(id, imagePath){
+  if(editingBannerId === id) cancelBannerEdit();
+  if(imagePath){ await sb.storage.from(BANNER_BUCKET).remove([imagePath]); }
+  const { error } = await sb.from('banners').delete().eq('id', id);
+  if(error){ toast('Delete fail: ' + error.message); return; }
+  toast('Banner deleted.');
+  loadBannersAdmin();
 }
 
 async function loadDashStats(){
