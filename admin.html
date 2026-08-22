@@ -590,6 +590,23 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
         <div class="error-text" id="founderError"></div>
         <button class="btn btn-primary" style="margin-top:14px;" onclick="saveFounderProfile()">Save Founder Profile</button>
       </div>
+
+      <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Social Media Links (shown in footer)</span></div>
+      <div class="panel-card">
+        <label class="field-label">Facebook URL</label>
+        <input type="text" id="socialFacebook" placeholder="https://facebook.com/...">
+        <label class="field-label">Instagram URL</label>
+        <input type="text" id="socialInstagram" placeholder="https://instagram.com/...">
+        <label class="field-label">YouTube URL</label>
+        <input type="text" id="socialYoutube" placeholder="https://youtube.com/@...">
+        <label class="field-label">WhatsApp Channel/Number URL</label>
+        <input type="text" id="socialWhatsapp" placeholder="https://wa.me/... or channel link">
+        <label class="field-label">Telegram URL</label>
+        <input type="text" id="socialTelegram" placeholder="https://t.me/...">
+        <p style="font-size:11.5px; color:var(--text-mute); margin:6px 0 0;">Khaali chhoda hua field footer me nahi dikhega — sirf jo bhare honge wahi icons dikhenge.</p>
+        <div class="error-text" id="socialError"></div>
+        <button class="btn btn-primary" style="margin-top:14px;" onclick="saveSocialLinks()">Save Social Links</button>
+      </div>
     </div>
   </div>
 
@@ -809,7 +826,7 @@ function showView(name){
   if(name==='gallery') loadGalleryAdmin();
   if(name==='students') loadStudents();
   if(name==='dash') loadDashStats();
-  if(name==='settings'){ loadAboutText(); loadFounderProfile(); }
+  if(name==='settings'){ loadAboutText(); loadFounderProfile(); loadSocialLinks(); }
 }
 
 /* ================= STUDENTS (Premium management) ================= */
@@ -1017,6 +1034,32 @@ async function saveFounderProfile(){
   fileInput.value = '';
   document.getElementById('founderCurrentPhotoNote').style.display = photo_path ? 'block' : 'none';
   toast('Founder profile updated.');
+}
+
+/* ================= SOCIAL MEDIA LINKS ================= */
+async function loadSocialLinks(){
+  const keys = ['social_facebook','social_instagram','social_youtube','social_whatsapp','social_telegram'];
+  const { data } = await sb.from('site_settings').select('key, value').in('key', keys);
+  const map = {};
+  (data || []).forEach(row => { map[row.key] = row.value; });
+  document.getElementById('socialFacebook').value = map.social_facebook || '';
+  document.getElementById('socialInstagram').value = map.social_instagram || '';
+  document.getElementById('socialYoutube').value = map.social_youtube || '';
+  document.getElementById('socialWhatsapp').value = map.social_whatsapp || '';
+  document.getElementById('socialTelegram').value = map.social_telegram || '';
+}
+async function saveSocialLinks(){
+  const errEl = document.getElementById('socialError'); errEl.textContent = '';
+  const rows = [
+    { key: 'social_facebook', value: document.getElementById('socialFacebook').value.trim() },
+    { key: 'social_instagram', value: document.getElementById('socialInstagram').value.trim() },
+    { key: 'social_youtube', value: document.getElementById('socialYoutube').value.trim() },
+    { key: 'social_whatsapp', value: document.getElementById('socialWhatsapp').value.trim() },
+    { key: 'social_telegram', value: document.getElementById('socialTelegram').value.trim() },
+  ].map(r => ({ ...r, updated_at: new Date().toISOString() }));
+  const { error } = await sb.from('site_settings').upsert(rows);
+  if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
+  toast('Social links updated.');
 }
 
 async function submitPasswordChange(){
