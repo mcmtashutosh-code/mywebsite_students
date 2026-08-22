@@ -150,6 +150,17 @@ img{max-width:100%;}
 .founder-bio{font-size:13.5px; color:var(--text-dim); line-height:1.7; white-space:pre-line; margin:0;}
 @media (max-width:520px){.founder-card{flex-direction:column; align-items:center; text-align:center;} .founder-badges{justify-content:center;}}
 
+/* ================= MISSION & VISION ================= */
+.mission-vision-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px;}
+.mv-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:24px;}
+.mv-icon{font-size:26px; margin-bottom:10px;}
+.mv-card h3{margin:0 0 12px; font-size:16px; color:var(--text);}
+.mv-list{margin:0; padding-left:18px; color:var(--text-dim); font-size:13.5px; line-height:1.8;}
+.mv-text{margin:0; color:var(--text-dim); font-size:13.5px; line-height:1.7;}
+.footer-social{display:flex; justify-content:center; gap:14px; padding:18px 0 0;}
+.footer-social a{width:38px; height:38px; border-radius:50%; background:var(--panel); border:1px solid var(--line-soft); display:flex; align-items:center; justify-content:center; font-size:17px; text-decoration:none; color:var(--text-dim);}
+.footer-social a:hover{border-color:var(--seal); color:var(--seal); transform:translateY(-2px);}
+
 /* ================= GALLERY ================= */
 .gallery-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px;}
 .gallery-item{position:relative; border-radius:12px; overflow:hidden; cursor:pointer; aspect-ratio:4/3; background:var(--panel); border:1px solid var(--line-soft);}
@@ -558,6 +569,26 @@ footer b{color:var(--gold);}
     </div>
 
     <div class="section">
+      <div class="mission-vision-grid">
+        <div class="mv-card">
+          <div class="mv-icon">🎯</div>
+          <h3>Our Mission</h3>
+          <ul class="mv-list">
+            <li>Provide structured, reliable preparation material for every student</li>
+            <li>Make quality exam resources accessible and affordable</li>
+            <li>Build disciplined study habits through organized, focused content</li>
+            <li>Continuously improve using student feedback and real results</li>
+          </ul>
+        </div>
+        <div class="mv-card">
+          <div class="mv-icon">🌟</div>
+          <h3>Our Vision</h3>
+          <p class="mv-text">To become a trusted, everyday companion for every Indian student preparing for government exams and academics — combining real teaching experience with reliable technology, so that consistent effort, not access to expensive coaching, decides success.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
       <div class="section-head"><span class="section-title"><span class="no">👤</span>Meet the Founder</span></div>
       <div class="founder-card">
         <div id="founderPhotoWrap"><div class="founder-photo-fallback">🎓</div></div>
@@ -659,6 +690,7 @@ Dhyeodaya was built from this same experience — combining real classroom teach
   </div>
 </div>
 
+<div id="footerSocialLinks" class="footer-social" style="display:none;"></div>
 <footer>Committed to the success of every <b>Dhyeodaya</b> student. © <span id="yr"></span> Dhyeodaya. All rights reserved.</footer>
 
 <!-- ================= AUTH MODAL ================= -->
@@ -1169,6 +1201,22 @@ async function loadFounderProfile(){
     const { data: urlData } = sb.storage.from('student-photos').getPublicUrl(map.founder_photo_path);
     document.getElementById('founderPhotoWrap').innerHTML = `<img src="${urlData.publicUrl}" alt="${esc(map.founder_name||'Founder')}" style="width:88px; height:88px; border-radius:50%; object-fit:cover; border:2px solid var(--gold); flex-shrink:0;">`;
   }
+}
+
+const SOCIAL_ICONS = { facebook:'📘', instagram:'📸', youtube:'▶️', whatsapp:'💬', telegram:'✈️' };
+async function loadSocialLinks(){
+  const keys = ['social_facebook','social_instagram','social_youtube','social_whatsapp','social_telegram'];
+  const { data, error } = await sb.from('site_settings').select('key, value').in('key', keys);
+  const el = document.getElementById('footerSocialLinks');
+  if(error || !data || !data.length){ el.style.display = 'none'; return; }
+  const links = data.filter(row => row.value && row.value.trim());
+  if(!links.length){ el.style.display = 'none'; return; }
+  el.innerHTML = links.map(row => {
+    const platform = row.key.replace('social_', '');
+    const icon = SOCIAL_ICONS[platform] || '🔗';
+    return `<a href="${esc(row.value)}" target="_blank" rel="noopener" title="${platform}">${icon}</a>`;
+  }).join('');
+  el.style.display = 'flex';
 }
 
 /* ================= SUCCESS STORIES ================= */
@@ -2090,6 +2138,7 @@ async function init(){
   loadSuccessStories('home');
   loadHomeFAQs();
   loadFeaturedNotes();
+  loadSocialLinks();
   logSiteVisit();
 
   // Keep the splash visible for at least 700ms so it doesn't flash on fast loads
