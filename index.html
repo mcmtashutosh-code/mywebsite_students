@@ -427,6 +427,11 @@ footer b{color:var(--gold);}
       </div>
     </div>
 
+    <div class="section" id="homeFeaturedSection" style="display:none;">
+      <div class="section-head"><span class="section-title"><span class="no">🔥</span>Popular Notes</span></div>
+      <div id="homeFeaturedList"></div>
+    </div>
+
     <div class="section" id="homeStoriesSection" style="display:none;">
       <div class="section-head"><span class="section-title"><span class="no">★</span>Success Stories</span></div>
       <div id="homeStoriesList" class="stories-scroll"></div>
@@ -1384,6 +1389,26 @@ async function loadSuccessStories(target){
 }
 
 /* ================= REACH STATS ================= */
+async function loadFeaturedNotes(){
+  const section = document.getElementById('homeFeaturedSection');
+  const el = document.getElementById('homeFeaturedList');
+  const { data, error } = await sb.from('notes').select('*').eq('is_featured', true).order('created_at', {ascending:false}).limit(6);
+  if(error || !data || !data.length){ section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  el.innerHTML = data.map(n=>`
+    <div class="item-card">
+      <div class="item-icon" style="background:#16324a; color:#6fb8e8;">📄</div>
+      <div class="item-body">
+        <p class="item-title">Topic: ${esc(n.topic)}</p>
+        <div class="item-meta"><span>Subject: ${esc(n.subject)}</span><span>${esc(n.class_or_exam)}</span><span>${accessLabel(n.access_mode)}</span>${(n.exam_categories||[]).map(t=>`<span>${esc(t)}</span>`).join('')}</div>
+      </div>
+      <div class="item-actions">
+        ${noteActionButtons(n)}
+      </div>
+    </div>
+  `).join('');
+}
+
 async function loadReachStats(){
   const { data, error } = await sb.rpc('get_platform_stats');
   if(error || !data) return;
@@ -2064,6 +2089,7 @@ async function init(){
   await loadReachStats();
   loadSuccessStories('home');
   loadHomeFAQs();
+  loadFeaturedNotes();
   logSiteVisit();
 
   // Keep the splash visible for at least 700ms so it doesn't flash on fast loads
