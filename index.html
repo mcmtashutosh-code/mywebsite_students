@@ -431,6 +431,11 @@ footer b{color:var(--gold);}
       <div class="section-head"><span class="section-title"><span class="no">★</span>Success Stories</span></div>
       <div id="homeStoriesList" class="stories-scroll"></div>
     </div>
+
+    <div class="section" id="homeFAQSection" style="display:none;">
+      <div class="section-head"><span class="section-title"><span class="no">?</span>Frequently Asked Questions</span></div>
+      <div id="homeFAQList"></div>
+    </div>
   </div>
 
   <!-- ================= NOTES ================= -->
@@ -1186,17 +1191,18 @@ async function loadQuickFAQs(){
     supportFAQCache = data || [];
   }
   document.getElementById('supportFAQSearch').value = '';
-  renderQuickFAQList(supportFAQCache.map((f,i)=>({...f, _idx:i})));
+  renderFAQAccordion('supportQuickFAQs', 'sq', supportFAQCache.map((f,i)=>({...f, _idx:i})));
 }
-function renderQuickFAQList(list){
-  const el = document.getElementById('supportQuickFAQs');
+function renderFAQAccordion(containerId, prefix, list){
+  const el = document.getElementById(containerId);
+  if(!el) return;
   if(!list.length){ el.innerHTML = '<div class="empty-note" style="padding:10px 0;">Koi matching question nahi mila.</div>'; return; }
   el.innerHTML = list.map(f => `
     <div class="faq-quick-item">
-      <button class="faq-quick-q" id="faqQ_${f._idx}" onclick="toggleQuickFAQ(${f._idx})">
+      <button class="faq-quick-q" id="${prefix}Q_${f._idx}" onclick="toggleFAQItem('${containerId}','${prefix}',${f._idx})">
         <span>${esc(f.question)}</span><span class="arrow">▾</span>
       </button>
-      <div class="faq-quick-a" id="faqA_${f._idx}"><div class="faq-quick-a-inner">${esc(f.answer)}</div></div>
+      <div class="faq-quick-a" id="${prefix}A_${f._idx}"><div class="faq-quick-a-inner">${esc(f.answer)}</div></div>
     </div>
   `).join('');
 }
@@ -1204,18 +1210,18 @@ function filterQuickFAQs(){
   if(!supportFAQCache) return;
   const q = document.getElementById('supportFAQSearch').value.trim().toLowerCase();
   const withIdx = supportFAQCache.map((f,i)=>({...f, _idx:i}));
-  if(!q){ renderQuickFAQList(withIdx); return; }
+  if(!q){ renderFAQAccordion('supportQuickFAQs', 'sq', withIdx); return; }
   const filtered = withIdx.filter(f =>
     f.question.toLowerCase().includes(q) || (f.keywords||[]).some(k=>k.toLowerCase().includes(q))
   );
-  renderQuickFAQList(filtered);
+  renderFAQAccordion('supportQuickFAQs', 'sq', filtered);
 }
-function toggleQuickFAQ(i){
-  const q = document.getElementById('faqQ_'+i);
-  const a = document.getElementById('faqA_'+i);
+function toggleFAQItem(containerId, prefix, i){
+  const q = document.getElementById(prefix+'Q_'+i);
+  const a = document.getElementById(prefix+'A_'+i);
   const isOpen = q.classList.contains('open');
-  // close any other open item (accordion behavior)
-  document.querySelectorAll('.faq-quick-q.open').forEach(el=>{
+  // close any other open item within the SAME container only (accordion behavior)
+  document.querySelectorAll('#'+containerId+' .faq-quick-q.open').forEach(el=>{
     el.classList.remove('open');
     el.nextElementSibling.style.maxHeight = null;
   });
@@ -1223,6 +1229,16 @@ function toggleQuickFAQ(i){
     q.classList.add('open');
     a.style.maxHeight = a.scrollHeight + 'px';
   }
+}
+async function loadHomeFAQs(){
+  const section = document.getElementById('homeFAQSection');
+  if(!supportFAQCache){
+    const { data } = await sb.from('faq_entries').select('*').eq('is_active', true).order('order_index');
+    supportFAQCache = data || [];
+  }
+  if(!supportFAQCache.length){ section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  renderFAQAccordion('homeFAQList', 'hf', supportFAQCache.map((f,i)=>({...f, _idx:i})));
 }
 function backToSupportAsk(){
   document.getElementById('supportStepAsk').style.display = 'block';
@@ -2047,6 +2063,7 @@ async function init(){
   await loadNoticesHome();
   await loadReachStats();
   loadSuccessStories('home');
+  loadHomeFAQs();
   logSiteVisit();
 
   // Keep the splash visible for at least 700ms so it doesn't flash on fast loads
