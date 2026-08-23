@@ -1536,7 +1536,7 @@ async function submitBanner(){
 async function loadBannersAdmin(){
   const el = document.getElementById('bannersList');
   el.innerHTML = '<div class="empty-note">Loading…</div>';
-  const { data, error } = await sb.from('banners').select('*').order('order_index').order('created_at', {ascending:false});
+  const { data, error } = await sb.from('banners').select('*').order('order_index').order('created_at', {ascending:true});
   if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
   if(!data || !data.length){ el.innerHTML = '<div class="empty-note">Koi banner add nahi hua abhi.</div>'; return; }
   el.innerHTML = data.map(b=>`
