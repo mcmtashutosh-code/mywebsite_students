@@ -1550,7 +1550,7 @@ function bannerImageUrl(path){
 }
 async function loadBanners(){
   const carousel = document.getElementById('bannerCarousel');
-  const { data, error } = await sb.from('banners').select('*').eq('is_active', true).order('order_index').order('created_at', {ascending:false});
+  const { data, error } = await sb.from('banners').select('*').eq('is_active', true).order('order_index').order('created_at', {ascending:true});
   if(error || !data || !data.length){ carousel.style.display = 'none'; return; }
   bannerSlides = data;
   carousel.style.display = 'block';
