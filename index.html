@@ -3,9 +3,54 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<meta name="description" content="Dhyeodaya — Complete preparation platform for Government Jobs and Board Exams. Study notes, mock tests, live classes, and job updates all in one place.">
+
+<!-- ================= PRIMARY SEO META ================= -->
+<meta name="description" content="Dhyeodaya — Complete preparation platform for Government Jobs (SSC, Bank, Railway, TCS/IT) and Board Exams (Class 9-12, UGC NET, CTET). Study notes, mock tests, live classes, and job updates all in one place.">
+<meta name="keywords" content="Dhyeodaya, SSC notes, Bank exam preparation, Railway exam notes, TCS IT recruitment, UGC NET preparation, CTET notes, government job updates, competitive exam mock test, online coaching India, exam notes Hindi English">
+<meta name="author" content="Dhyeodaya">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://dhyeodaya.in/">
 <link rel="icon" href="logo-icon.png">
-<title>Dhyeodaya — तैयारी से सफलता तक</title>
+<title>Dhyeodaya — तैयारी से सफलता तक | SSC, Bank, Railway, UGC NET & CTET Exam Preparation</title>
+
+<!-- ================= OPEN GRAPH (Facebook, WhatsApp, LinkedIn previews) ================= -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dhyeodaya.in/">
+<meta property="og:title" content="Dhyeodaya — तैयारी से सफलता तक | Complete Exam Preparation Platform">
+<meta property="og:description" content="Study notes, mock tests, live classes, and job updates for SSC, Bank, Railway, TCS/IT, UGC NET, CTET and academic students — all in one platform.">
+<meta property="og:image" content="https://dhyeodaya.in/logo-full.png">
+<meta property="og:locale" content="hi_IN">
+<meta property="og:site_name" content="Dhyeodaya">
+
+<!-- ================= TWITTER/X CARD ================= -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Dhyeodaya — तैयारी से सफलता तक">
+<meta name="twitter:description" content="Complete preparation platform for Government Jobs and Board Exams — Notes, Mock Tests, Live Classes, Job Updates.">
+<meta name="twitter:image" content="https://dhyeodaya.in/logo-full.png">
+
+<!-- ================= STRUCTURED DATA (Schema.org — helps Google show rich results) ================= -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "EducationalOrganization",
+  "name": "Dhyeodaya",
+  "alternateName": "तैयारी से सफलता तक",
+  "url": "https://dhyeodaya.in/",
+  "logo": "https://dhyeodaya.in/logo-full.png",
+  "description": "Complete exam preparation platform for Government Jobs (SSC, Bank, Railway, TCS/IT) and Board Exams (Class 9-12, UGC NET, CTET) offering study notes, mock tests, live classes and job updates.",
+  "founder": {
+    "@type": "Person",
+    "name": "Ashutosh Kumar Dubey",
+    "jobTitle": "Founder & Computer Science Faculty"
+  },
+  "address": {
+    "@type": "PostalAddress",
+    "addressCountry": "IN"
+  },
+  "sameAs": []
+}
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -930,9 +975,43 @@ function renderView(name, updateHistory){
   if(resolved==='gallery') loadGallery();
   if(resolved==='profile'){ renderProfile(); loadMyTickets(); }
 
+  updatePageMeta(resolved);
+
   if(updateHistory && location.hash.slice(1) !== resolved){
     try{ history.pushState({view:resolved}, '', '#'+resolved); }catch(e){}
   }
+}
+
+// Updates the browser tab title + meta description per section — helps SEO
+// (each "page" gets relevant, keyword-specific text) and improves the
+// browser-tab / bookmark experience for users.
+const PAGE_META = {
+  home:    { title: 'Dhyeodaya — तैयारी से सफलता तक | SSC, Bank, Railway, UGC NET & CTET Exam Preparation',
+             desc: 'Complete preparation platform for Government Jobs and Board Exams. Study notes, mock tests, live classes, and job updates all in one place.' },
+  notes:   { title: 'Study Notes — SSC, Bank, Railway, UGC NET, CTET & Academic Notes | Dhyeodaya',
+             desc: 'Subject-wise verified study notes for Academic (Class 9-12) and Competitive exams — SSC, Bank, Railway, TCS/IT, UGC NET, CTET.' },
+  test:    { title: 'Mock Tests & CBT Exam Portal | Dhyeodaya',
+             desc: 'Timer-based mock tests and live examinations on Dhyeodaya\'s dedicated CBT Portal — practice for SSC, Bank, Railway and more.' },
+  jobs:    { title: 'Latest Government & Private Job Updates | Dhyeodaya',
+             desc: 'Latest verified government and private job vacancies, results, and admit cards — updated regularly.' },
+  live:    { title: 'Live Classes | Dhyeodaya',
+             desc: 'Scheduled live lectures conducted by expert faculty for competitive exam and academic preparation.' },
+  about:   { title: 'About Dhyeodaya — Our Mission, Vision & Founder',
+             desc: 'Learn about Dhyeodaya\'s mission to make quality exam preparation accessible, and meet founder Ashutosh Kumar Dubey.' },
+  gallery: { title: 'Gallery — Events & Moments | Dhyeodaya',
+             desc: 'Photos and videos from Dhyeodaya events, batches, and milestones.' },
+  notice:  { title: 'Notices & Announcements | Dhyeodaya',
+             desc: 'Latest important notices and announcements from Dhyeodaya.' },
+};
+function updatePageMeta(viewName){
+  const meta = PAGE_META[viewName] || PAGE_META.home;
+  document.title = meta.title;
+  const descTag = document.querySelector('meta[name="description"]');
+  if(descTag) descTag.setAttribute('content', meta.desc);
+  const ogTitle = document.querySelector('meta[property="og:title"]');
+  const ogDesc = document.querySelector('meta[property="og:description"]');
+  if(ogTitle) ogTitle.setAttribute('content', meta.title);
+  if(ogDesc) ogDesc.setAttribute('content', meta.desc);
 }
 
 // Handles browser Back/Forward navigation only (pushState doesn't fire hashchange).
