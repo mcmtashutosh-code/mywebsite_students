@@ -34,6 +34,12 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 .btn{border:none; border-radius:9px; padding:12px 18px; font-weight:700; font-size:13.5px; cursor:pointer; font-family:inherit;}
 .btn-primary{background:var(--seal); color:#eafff4;}
 .btn-danger{background:var(--stamp); color:#fff;}
+.switch{position:relative; display:inline-block; width:46px; height:26px; flex-shrink:0;}
+.switch input{opacity:0; width:0; height:0;}
+.switch-slider{position:absolute; cursor:pointer; inset:0; background:var(--bg-2); border:1px solid var(--line-soft); border-radius:26px; transition:.2s;}
+.switch-slider::before{content:""; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:var(--text-mute); border-radius:50%; transition:.2s;}
+.switch input:checked + .switch-slider{background:var(--seal); border-color:var(--seal);}
+.switch input:checked + .switch-slider::before{transform:translateX(20px); background:#eafff4;}
 .pw-wrap{position:relative;}
 .pw-wrap input{padding-right:44px;}
 .pw-toggle{position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-mute); cursor:pointer; font-size:16px; padding:4px; line-height:1;}
@@ -609,6 +615,14 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 
       <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Founder Profile (shown on About page)</span></div>
       <div class="panel-card">
+        <label class="field-label">Visibility</label>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+          <label class="switch">
+            <input type="checkbox" id="founderVisibleToggle" checked onchange="toggleFounderVisibility()">
+            <span class="switch-slider"></span>
+          </label>
+          <span id="founderVisibleLabel" style="font-size:13px; color:var(--text-dim);">Section is visible on website</span>
+        </div>
         <label class="field-label">Name</label>
         <input type="text" id="founderName" placeholder="e.g. Ashutosh Kumar Dubey">
         <label class="field-label">Title / Role</label>
@@ -621,7 +635,10 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
         <input type="file" id="founderPhoto" accept="image/*">
         <div id="founderCurrentPhotoNote" style="display:none; font-size:12px; color:var(--text-mute); margin-top:6px;">Ek photo already lagi hai. Nayi choose karoge to wahi replace ho jayegi.</div>
         <div class="error-text" id="founderError"></div>
-        <button class="btn btn-primary" style="margin-top:14px;" onclick="saveFounderProfile()">Save Founder Profile</button>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <button class="btn btn-primary" onclick="saveFounderProfile()">Save Founder Profile</button>
+          <button class="btn btn-danger" onclick="deleteFounderProfile()">Delete Profile</button>
+        </div>
       </div>
 
       <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Social Media Links (shown in footer)</span></div>
@@ -1024,7 +1041,7 @@ async function saveAboutText(){
 /* ================= FOUNDER PROFILE ================= */
 let currentFounderPhotoPath = null;
 async function loadFounderProfile(){
-  const keys = ['founder_name','founder_title','founder_badges','founder_bio','founder_photo_path'];
+  const keys = ['founder_name','founder_title','founder_badges','founder_bio','founder_photo_path','founder_visible'];
   const { data } = await sb.from('site_settings').select('key, value').in('key', keys);
   const map = {};
   (data || []).forEach(row => { map[row.key] = row.value; });
@@ -1034,6 +1051,17 @@ async function loadFounderProfile(){
   document.getElementById('founderBio').value = map.founder_bio || '';
   currentFounderPhotoPath = map.founder_photo_path || null;
   document.getElementById('founderCurrentPhotoNote').style.display = currentFounderPhotoPath ? 'block' : 'none';
+
+  const isVisible = map.founder_visible !== 'false'; // default true if never set
+  document.getElementById('founderVisibleToggle').checked = isVisible;
+  document.getElementById('founderVisibleLabel').textContent = isVisible ? 'Section is visible on website' : 'Section is hidden from website';
+}
+async function toggleFounderVisibility(){
+  const isVisible = document.getElementById('founderVisibleToggle').checked;
+  document.getElementById('founderVisibleLabel').textContent = isVisible ? 'Section is visible on website' : 'Section is hidden from website';
+  const { error } = await sb.from('site_settings').upsert({ key: 'founder_visible', value: isVisible ? 'true' : 'false', updated_at: new Date().toISOString() });
+  if(error){ toast('Visibility update fail: ' + error.message); return; }
+  toast(isVisible ? 'Founder section shown on website.' : 'Founder section hidden from website.');
 }
 async function saveFounderProfile(){
   const name = document.getElementById('founderName').value.trim();
@@ -1069,6 +1097,30 @@ async function saveFounderProfile(){
   fileInput.value = '';
   document.getElementById('founderCurrentPhotoNote').style.display = photo_path ? 'block' : 'none';
   toast('Founder profile updated.');
+}
+async function deleteFounderProfile(){
+  if(!confirm('Poora Founder Profile delete karna hai? Naam, bio, photo — sab clear ho jayega aur section website se hide ho jayega.')) return;
+  if(currentFounderPhotoPath){ await sb.storage.from(STUDENT_PHOTOS_BUCKET).remove([currentFounderPhotoPath]); }
+  const rows = [
+    { key: 'founder_name', value: '' },
+    { key: 'founder_title', value: '' },
+    { key: 'founder_badges', value: '' },
+    { key: 'founder_bio', value: '' },
+    { key: 'founder_photo_path', value: '' },
+    { key: 'founder_visible', value: 'false' },
+  ].map(r => ({ ...r, updated_at: new Date().toISOString() }));
+  const { error } = await sb.from('site_settings').upsert(rows);
+  if(error){ toast('Delete fail: ' + error.message); return; }
+  currentFounderPhotoPath = null;
+  document.getElementById('founderName').value = '';
+  document.getElementById('founderTitle').value = '';
+  document.getElementById('founderBadges').value = '';
+  document.getElementById('founderBio').value = '';
+  document.getElementById('founderPhoto').value = '';
+  document.getElementById('founderCurrentPhotoNote').style.display = 'none';
+  document.getElementById('founderVisibleToggle').checked = false;
+  document.getElementById('founderVisibleLabel').textContent = 'Section is hidden from website';
+  toast('Founder profile deleted and hidden from website.');
 }
 
 /* ================= SOCIAL MEDIA LINKS ================= */
