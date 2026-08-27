@@ -653,8 +653,28 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
         </div>
         <label class="field-label">Message (emojis allowed — will scroll continuously)</label>
         <input type="text" id="festivalMessage" placeholder="e.g. 🎉 Raksha Bandhan ki hardik shubhkamnaye! सभी students ko Dhyeodaya ki taraf se badhai 🎉">
+
+        <label class="field-label">Scroll Speed</label>
+        <select id="festivalSpeed">
+          <option value="35">Slow</option>
+          <option value="22" selected>Medium</option>
+          <option value="12">Fast</option>
+        </select>
+
+        <label class="field-label">Background Color</label>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="color" id="festivalBgColor" value="#7a1f3d" style="width:56px; height:40px; padding:2px; cursor:pointer;">
+          <span style="font-size:12px; color:var(--text-mute);">Solid color — try deep maroon, navy, or dark green for best readability</span>
+        </div>
+
+        <label class="field-label" style="margin-top:14px;">Text Color</label>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="color" id="festivalTextColor" value="#ffd700" style="width:56px; height:40px; padding:2px; cursor:pointer;">
+          <span style="font-size:12px; color:var(--text-mute);">Bright colors (gold, white, yellow) work best against a dark background</span>
+        </div>
+
         <div class="error-text" id="festivalError"></div>
-        <button class="btn btn-primary" style="margin-top:14px;" onclick="saveFestivalBanner()">Save Message</button>
+        <button class="btn btn-primary" style="margin-top:14px;" onclick="saveFestivalBanner()">Save Banner Settings</button>
       </div>
 
       <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Social Media Links (shown in footer)</span></div>
@@ -1142,11 +1162,14 @@ async function deleteFounderProfile(){
 /* ================= SOCIAL MEDIA LINKS ================= */
 /* ================= FESTIVAL GREETING BANNER ================= */
 async function loadFestivalBanner(){
-  const keys = ['festival_message', 'festival_enabled'];
+  const keys = ['festival_message', 'festival_enabled', 'festival_speed', 'festival_bg_color', 'festival_text_color'];
   const { data } = await sb.from('site_settings').select('key, value').in('key', keys);
   const map = {};
   (data || []).forEach(row => { map[row.key] = row.value; });
   document.getElementById('festivalMessage').value = map.festival_message || '';
+  document.getElementById('festivalSpeed').value = map.festival_speed || '22';
+  document.getElementById('festivalBgColor').value = map.festival_bg_color || '#7a1f3d';
+  document.getElementById('festivalTextColor').value = map.festival_text_color || '#ffd700';
   const enabled = map.festival_enabled === 'true';
   document.getElementById('festivalEnabledToggle').checked = enabled;
   document.getElementById('festivalEnabledLabel').textContent = enabled ? 'Banner is visible on website' : 'Banner is hidden';
@@ -1160,11 +1183,20 @@ async function toggleFestivalBanner(){
 }
 async function saveFestivalBanner(){
   const message = document.getElementById('festivalMessage').value.trim();
+  const speed = document.getElementById('festivalSpeed').value;
+  const bgColor = document.getElementById('festivalBgColor').value;
+  const textColor = document.getElementById('festivalTextColor').value;
   const errEl = document.getElementById('festivalError'); errEl.textContent = '';
   if(!message){ errEl.textContent = 'Message likhein.'; return; }
-  const { error } = await sb.from('site_settings').upsert({ key: 'festival_message', value: message, updated_at: new Date().toISOString() });
+  const rows = [
+    { key: 'festival_message', value: message },
+    { key: 'festival_speed', value: speed },
+    { key: 'festival_bg_color', value: bgColor },
+    { key: 'festival_text_color', value: textColor },
+  ].map(r => ({ ...r, updated_at: new Date().toISOString() }));
+  const { error } = await sb.from('site_settings').upsert(rows);
   if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
-  toast('Festival message saved.');
+  toast('Festival banner settings saved.');
 }
 
 async function loadSocialLinks(){
