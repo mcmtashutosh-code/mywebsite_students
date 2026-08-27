@@ -641,6 +641,22 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
         </div>
       </div>
 
+      <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Festival Greeting Banner (scrolling ticker, shown site-wide)</span></div>
+      <div class="panel-card">
+        <label class="field-label">Show Banner</label>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+          <label class="switch">
+            <input type="checkbox" id="festivalEnabledToggle" onchange="toggleFestivalBanner()">
+            <span class="switch-slider"></span>
+          </label>
+          <span id="festivalEnabledLabel" style="font-size:13px; color:var(--text-dim);">Banner is hidden</span>
+        </div>
+        <label class="field-label">Message (emojis allowed — will scroll continuously)</label>
+        <input type="text" id="festivalMessage" placeholder="e.g. 🎉 Raksha Bandhan ki hardik shubhkamnaye! सभी students ko Dhyeodaya ki taraf se badhai 🎉">
+        <div class="error-text" id="festivalError"></div>
+        <button class="btn btn-primary" style="margin-top:14px;" onclick="saveFestivalBanner()">Save Message</button>
+      </div>
+
       <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Social Media Links (shown in footer)</span></div>
       <div class="panel-card">
         <label class="field-label">Facebook URL</label>
@@ -878,7 +894,7 @@ function showView(name){
   if(name==='banners') loadBannersAdmin();
   if(name==='students') loadStudents();
   if(name==='dash') loadDashStats();
-  if(name==='settings'){ loadAboutText(); loadFounderProfile(); loadSocialLinks(); }
+  if(name==='settings'){ loadAboutText(); loadFounderProfile(); loadSocialLinks(); loadFestivalBanner(); }
 }
 
 /* ================= STUDENTS (Premium management) ================= */
@@ -1124,6 +1140,33 @@ async function deleteFounderProfile(){
 }
 
 /* ================= SOCIAL MEDIA LINKS ================= */
+/* ================= FESTIVAL GREETING BANNER ================= */
+async function loadFestivalBanner(){
+  const keys = ['festival_message', 'festival_enabled'];
+  const { data } = await sb.from('site_settings').select('key, value').in('key', keys);
+  const map = {};
+  (data || []).forEach(row => { map[row.key] = row.value; });
+  document.getElementById('festivalMessage').value = map.festival_message || '';
+  const enabled = map.festival_enabled === 'true';
+  document.getElementById('festivalEnabledToggle').checked = enabled;
+  document.getElementById('festivalEnabledLabel').textContent = enabled ? 'Banner is visible on website' : 'Banner is hidden';
+}
+async function toggleFestivalBanner(){
+  const enabled = document.getElementById('festivalEnabledToggle').checked;
+  document.getElementById('festivalEnabledLabel').textContent = enabled ? 'Banner is visible on website' : 'Banner is hidden';
+  const { error } = await sb.from('site_settings').upsert({ key: 'festival_enabled', value: enabled ? 'true' : 'false', updated_at: new Date().toISOString() });
+  if(error){ toast('Update fail: ' + error.message); return; }
+  toast(enabled ? 'Festival banner shown on website.' : 'Festival banner hidden.');
+}
+async function saveFestivalBanner(){
+  const message = document.getElementById('festivalMessage').value.trim();
+  const errEl = document.getElementById('festivalError'); errEl.textContent = '';
+  if(!message){ errEl.textContent = 'Message likhein.'; return; }
+  const { error } = await sb.from('site_settings').upsert({ key: 'festival_message', value: message, updated_at: new Date().toISOString() });
+  if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
+  toast('Festival message saved.');
+}
+
 async function loadSocialLinks(){
   const keys = ['social_facebook','social_instagram','social_youtube','social_whatsapp','social_telegram'];
   const { data } = await sb.from('site_settings').select('key, value').in('key', keys);
