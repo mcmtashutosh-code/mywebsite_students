@@ -97,6 +97,14 @@ img{max-width:100%;}
 @keyframes flow{0%{background-position:0 0;}100%{background-position:200% 0;}}
 @media (prefers-reduced-motion:reduce){.topstrip{animation:none;}}
 
+/* ================= FESTIVAL GREETING TICKER ================= */
+.festival-ticker{overflow:hidden; white-space:nowrap; background:linear-gradient(90deg, var(--stamp), var(--gold), var(--seal), var(--gold), var(--stamp)); background-size:300% 100%; animation:festivalGlow 5s ease infinite; padding:8px 0; position:relative; z-index:49;}
+.festival-ticker-track{display:inline-block; padding-left:100%; font-weight:700; font-size:14px; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.4); animation:festivalScroll 18s linear infinite;}
+@keyframes festivalScroll{ from{ transform:translateX(0); } to{ transform:translateX(-100%); } }
+@keyframes festivalGlow{ 0%,100%{ background-position:0% 50%; } 50%{ background-position:100% 50%; } }
+@media (prefers-reduced-motion:reduce){ .festival-ticker{animation:none;} .festival-ticker-track{animation:none; padding-left:16px;} }
+@media (max-width:520px){ .festival-ticker-track{font-size:12.5px;} }
+
 .navbar{position:sticky; top:0; z-index:50; background:linear-gradient(180deg,var(--paper),var(--paper-2)); border-bottom:1px solid rgba(0,0,0,.08);}
 .navbar-inner{max-width:1080px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 18px; gap:14px;}
 .navbar-logo-img{height:86px; width:auto; display:block;}
@@ -424,6 +432,10 @@ footer b{color:var(--gold);}
 </div>
 
 <div class="topstrip"></div>
+
+<div id="festivalTicker" class="festival-ticker" style="display:none;">
+  <div class="festival-ticker-track" id="festivalTickerTrack"></div>
+</div>
 
 <div class="navbar">
   <div class="navbar-inner">
@@ -1326,6 +1338,22 @@ async function loadFounderProfile(){
 }
 
 const SOCIAL_ICONS = { facebook:'📘', instagram:'📸', youtube:'▶️', whatsapp:'💬', telegram:'✈️' };
+/* ================= FESTIVAL GREETING TICKER (site-wide) ================= */
+async function loadFestivalTicker(){
+  const keys = ['festival_message', 'festival_enabled'];
+  const { data, error } = await sb.from('site_settings').select('key, value').in('key', keys);
+  const wrap = document.getElementById('festivalTicker');
+  if(error || !data || !data.length){ wrap.style.display = 'none'; return; }
+  const map = {};
+  data.forEach(row => { map[row.key] = row.value; });
+  if(map.festival_enabled !== 'true' || !map.festival_message || !map.festival_message.trim()){
+    wrap.style.display = 'none';
+    return;
+  }
+  document.getElementById('festivalTickerTrack').textContent = map.festival_message;
+  wrap.style.display = 'block';
+}
+
 async function loadSocialLinks(){
   const keys = ['social_facebook','social_instagram','social_youtube','social_whatsapp','social_telegram'];
   const { data, error } = await sb.from('site_settings').select('key, value').in('key', keys);
@@ -2376,6 +2404,7 @@ async function init(){
   loadFeaturedNotes();
   loadBanners();
   loadSocialLinks();
+  loadFestivalTicker();
   logSiteVisit();
 
   // Keep the splash visible for at least 700ms so it doesn't flash on fast loads
