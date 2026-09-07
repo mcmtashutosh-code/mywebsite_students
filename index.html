@@ -1362,7 +1362,6 @@ async function loadFounderProfile(){
   }
 }
 
-const SOCIAL_ICONS = { facebook:'📘', instagram:'📸', youtube:'▶️', whatsapp:'💬', telegram:'✈️' };
 /* ================= FESTIVAL GREETING TICKER (site-wide) ================= */
 async function loadFestivalTicker(){
   const keys = ['festival_message', 'festival_enabled', 'festival_speed', 'festival_bg_color', 'festival_text_color', 'festival_end_datetime'];
@@ -1404,27 +1403,26 @@ async function loadFestivalTicker(){
 }
 
 async function loadSocialLinks(){
-  const keys = ['contact_email','social_facebook','social_instagram','social_youtube','social_whatsapp','social_telegram'];
-  const { data, error } = await sb.from('site_settings').select('key, value').in('key', keys);
   const emailEl = document.getElementById('footerContactEmail');
   const el = document.getElementById('footerSocialLinks');
-  if(error || !data || !data.length){ emailEl.style.display = 'none'; el.style.display = 'none'; return; }
 
-  const emailRow = data.find(row => row.key === 'contact_email' && row.value && row.value.trim());
-  if(emailRow){
-    emailEl.innerHTML = `Koi sawaal ya concern ho to humein likhein: <a href="mailto:${esc(emailRow.value)}">${esc(emailRow.value)}</a>`;
+  const [emailRes, linksRes] = await Promise.all([
+    sb.from('site_settings').select('value').eq('key', 'contact_email').maybeSingle(),
+    sb.from('social_links').select('*').eq('is_active', true).order('order_index').order('created_at'),
+  ]);
+
+  if(emailRes.data && emailRes.data.value && emailRes.data.value.trim()){
+    emailEl.innerHTML = `Koi sawaal ya concern ho to humein likhein: <a href="mailto:${esc(emailRes.data.value)}">${esc(emailRes.data.value)}</a>`;
     emailEl.style.display = 'block';
   } else {
     emailEl.style.display = 'none';
   }
 
-  const links = data.filter(row => row.key !== 'contact_email' && row.value && row.value.trim());
+  const links = linksRes.data || [];
   if(!links.length){ el.style.display = 'none'; return; }
-  el.innerHTML = links.map(row => {
-    const platform = row.key.replace('social_', '');
-    const icon = SOCIAL_ICONS[platform] || '🔗';
-    return `<a href="${esc(row.value)}" target="_blank" rel="noopener" title="${platform}">${icon}</a>`;
-  }).join('');
+  el.innerHTML = links.map(link =>
+    `<a href="${esc(link.url)}" target="_blank" rel="noopener" title="${esc(link.platform_name)}">${link.icon}</a>`
+  ).join('');
   el.style.display = 'flex';
 }
 
