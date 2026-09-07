@@ -230,6 +230,9 @@ img{max-width:100%;}
 .mv-list{margin:0; padding-left:18px; color:var(--text-dim); font-size:13.5px; line-height:1.8;}
 .mv-text{margin:0; color:var(--text-dim); font-size:13.5px; line-height:1.7;}
 .footer-social{display:flex; justify-content:center; gap:14px; padding:18px 0 0;}
+.footer-contact-email{text-align:center; padding:22px 16px 0; font-size:13px; color:var(--text-mute);}
+.footer-contact-email a{color:var(--seal); font-weight:600; text-decoration:none;}
+.footer-contact-email a:hover{text-decoration:underline;}
 .footer-social a{width:38px; height:38px; border-radius:50%; background:var(--panel); border:1px solid var(--line-soft); display:flex; align-items:center; justify-content:center; font-size:17px; text-decoration:none; color:var(--text-dim);}
 .footer-social a:hover{border-color:var(--seal); color:var(--seal); transform:translateY(-2px);}
 
@@ -702,6 +705,14 @@ Dhyeodaya was built from this same experience — combining real classroom teach
       <div class="section-head"><span class="section-title"><span class="no">★</span>Success Stories</span></div>
       <div id="aboutStoriesList" class="stories-scroll"></div>
     </div>
+
+    <div class="section" id="aboutContactSection" style="display:none;">
+      <div class="section-head"><span class="section-title"><span class="no">✉</span>Contact Us</span></div>
+      <div class="admit-card" style="display:block; padding:24px 28px; text-align:center;">
+        <p style="margin:0; color:var(--ink); font-size:14px;">Koi sawaal, concern, ya feedback ho — humein likhein:</p>
+        <p id="aboutContactEmailDisplay" style="margin:8px 0 0; font-size:17px; font-weight:700;"></p>
+      </div>
+    </div>
   </div>
 
   <!-- ================= GALLERY ================= -->
@@ -757,6 +768,7 @@ Dhyeodaya was built from this same experience — combining real classroom teach
       <textarea id="supportMessage" rows="3" placeholder="e.g. Password bhool gaya, ya notes download nahi ho rahe..."></textarea>
       <div class="error-text" id="supportError"></div>
       <button class="btn-full" onclick="searchSupportFAQ()">Solution Dhoondo</button>
+      <p id="supportEmailNote" style="display:none; text-align:center; font-size:12px; color:var(--text-mute); margin-top:12px;"></p>
     </div>
 
     <div id="supportStepResult" style="display:none;">
@@ -778,6 +790,7 @@ Dhyeodaya was built from this same experience — combining real classroom teach
   </div>
 </div>
 
+<div id="footerContactEmail" class="footer-contact-email" style="display:none;"></div>
 <div id="footerSocialLinks" class="footer-social" style="display:none;"></div>
 <footer>Committed to the success of every <b>Dhyeodaya</b> student. © <span id="yr"></span> Dhyeodaya. All rights reserved.</footer>
 
@@ -1311,6 +1324,17 @@ async function loadAboutText(){
   el.textContent = data.value;
   loadSuccessStories('about');
   loadFounderProfile();
+  loadAboutContactEmail();
+}
+async function loadAboutContactEmail(){
+  const { data } = await sb.from('site_settings').select('value').eq('key', 'contact_email').maybeSingle();
+  const section = document.getElementById('aboutContactSection');
+  if(data && data.value && data.value.trim()){
+    document.getElementById('aboutContactEmailDisplay').innerHTML = `<a href="mailto:${esc(data.value)}" style="color:var(--stamp);">${esc(data.value)}</a>`;
+    section.style.display = 'block';
+  } else {
+    section.style.display = 'none';
+  }
 }
 
 async function loadFounderProfile(){
@@ -1380,11 +1404,21 @@ async function loadFestivalTicker(){
 }
 
 async function loadSocialLinks(){
-  const keys = ['social_facebook','social_instagram','social_youtube','social_whatsapp','social_telegram'];
+  const keys = ['contact_email','social_facebook','social_instagram','social_youtube','social_whatsapp','social_telegram'];
   const { data, error } = await sb.from('site_settings').select('key, value').in('key', keys);
+  const emailEl = document.getElementById('footerContactEmail');
   const el = document.getElementById('footerSocialLinks');
-  if(error || !data || !data.length){ el.style.display = 'none'; return; }
-  const links = data.filter(row => row.value && row.value.trim());
+  if(error || !data || !data.length){ emailEl.style.display = 'none'; el.style.display = 'none'; return; }
+
+  const emailRow = data.find(row => row.key === 'contact_email' && row.value && row.value.trim());
+  if(emailRow){
+    emailEl.innerHTML = `Koi sawaal ya concern ho to humein likhein: <a href="mailto:${esc(emailRow.value)}">${esc(emailRow.value)}</a>`;
+    emailEl.style.display = 'block';
+  } else {
+    emailEl.style.display = 'none';
+  }
+
+  const links = data.filter(row => row.key !== 'contact_email' && row.value && row.value.trim());
   if(!links.length){ el.style.display = 'none'; return; }
   el.innerHTML = links.map(row => {
     const platform = row.key.replace('social_', '');
@@ -1427,6 +1461,17 @@ function openSupportModal(){
   document.getElementById('supportError').textContent = '';
   openModal('supportModal');
   loadQuickFAQs();
+  showSupportEmailNote();
+}
+async function showSupportEmailNote(){
+  const { data } = await sb.from('site_settings').select('value').eq('key', 'contact_email').maybeSingle();
+  const el = document.getElementById('supportEmailNote');
+  if(data && data.value && data.value.trim()){
+    el.innerHTML = `Ya seedha email karein: <a href="mailto:${esc(data.value)}" style="color:var(--seal); font-weight:600;">${esc(data.value)}</a>`;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
 }
 async function loadQuickFAQs(){
   if(!supportFAQCache){
