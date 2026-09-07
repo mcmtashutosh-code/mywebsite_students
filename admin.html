@@ -674,6 +674,10 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
           <span style="font-size:12px; color:var(--text-mute);">Bright colors (gold, white, yellow) work best against a dark background</span>
         </div>
 
+        <label class="field-label" style="margin-top:14px;">Auto-Hide After (optional)</label>
+        <input type="datetime-local" id="festivalEndDate">
+        <p id="festivalEndDateNote" style="font-size:11.5px; color:var(--text-mute); margin:6px 0 0;">Banner apne aap hide ho jayega is date/time ke baad. Khaali chhodo agar hamesha dikhna hai (manual toggle se hi hide hoga).</p>
+
         <div class="error-text" id="festivalError"></div>
         <button class="btn btn-primary" style="margin-top:14px;" onclick="saveFestivalBanner()">Save Banner Settings</button>
       </div>
@@ -1163,7 +1167,7 @@ async function deleteFounderProfile(){
 /* ================= SOCIAL MEDIA LINKS ================= */
 /* ================= FESTIVAL GREETING BANNER ================= */
 async function loadFestivalBanner(){
-  const keys = ['festival_message', 'festival_enabled', 'festival_speed', 'festival_bg_color', 'festival_text_color'];
+  const keys = ['festival_message', 'festival_enabled', 'festival_speed', 'festival_bg_color', 'festival_text_color', 'festival_end_datetime'];
   const { data } = await sb.from('site_settings').select('key, value').in('key', keys);
   const map = {};
   (data || []).forEach(row => { map[row.key] = row.value; });
@@ -1171,9 +1175,24 @@ async function loadFestivalBanner(){
   document.getElementById('festivalSpeed').value = map.festival_speed || '1';
   document.getElementById('festivalBgColor').value = map.festival_bg_color || '#7a1f3d';
   document.getElementById('festivalTextColor').value = map.festival_text_color || '#ffd700';
+
+  // Convert stored ISO datetime back into the <input type="datetime-local"> local format
+  if(map.festival_end_datetime){
+    const d = new Date(map.festival_end_datetime);
+    const localStr = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+    document.getElementById('festivalEndDate').value = localStr;
+  } else {
+    document.getElementById('festivalEndDate').value = '';
+  }
+
   const enabled = map.festival_enabled === 'true';
+  const expired = map.festival_end_datetime && new Date(map.festival_end_datetime) < new Date();
   document.getElementById('festivalEnabledToggle').checked = enabled;
-  document.getElementById('festivalEnabledLabel').textContent = enabled ? 'Banner is visible on website' : 'Banner is hidden';
+  if(expired && enabled){
+    document.getElementById('festivalEnabledLabel').textContent = 'Expired — auto-hidden on website (update the date to reactivate)';
+  } else {
+    document.getElementById('festivalEnabledLabel').textContent = enabled ? 'Banner is visible on website' : 'Banner is hidden';
+  }
 }
 async function toggleFestivalBanner(){
   const enabled = document.getElementById('festivalEnabledToggle').checked;
@@ -1187,17 +1206,21 @@ async function saveFestivalBanner(){
   const speed = document.getElementById('festivalSpeed').value;
   const bgColor = document.getElementById('festivalBgColor').value;
   const textColor = document.getElementById('festivalTextColor').value;
+  const endDateInput = document.getElementById('festivalEndDate').value; // local datetime string or ''
   const errEl = document.getElementById('festivalError'); errEl.textContent = '';
   if(!message){ errEl.textContent = 'Message likhein.'; return; }
+  const endDateISO = endDateInput ? new Date(endDateInput).toISOString() : '';
   const rows = [
     { key: 'festival_message', value: message },
     { key: 'festival_speed', value: speed },
     { key: 'festival_bg_color', value: bgColor },
     { key: 'festival_text_color', value: textColor },
+    { key: 'festival_end_datetime', value: endDateISO },
   ].map(r => ({ ...r, updated_at: new Date().toISOString() }));
   const { error } = await sb.from('site_settings').upsert(rows);
   if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
   toast('Festival banner settings saved.');
+  loadFestivalBanner();
 }
 
 async function loadSocialLinks(){
