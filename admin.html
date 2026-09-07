@@ -959,8 +959,8 @@ async function loadStudents(){
   const now = new Date();
   const toDeactivate = data.filter(s => s.is_active !== false && s.auto_inactive_date && new Date(s.auto_inactive_date) < now);
   if(toDeactivate.length){
-    await Promise.all(toDeactivate.map(s => sb.from('profiles').update({ is_active: false }).eq('id', s.id)));
-    toDeactivate.forEach(s => { s.is_active = false; });
+    await Promise.all(toDeactivate.map(s => sb.from('profiles').update({ is_active: false, plan: 'free' }).eq('id', s.id)));
+    toDeactivate.forEach(s => { s.is_active = false; s.plan = 'free'; });
   }
 
   const visitMap = {};
@@ -1008,9 +1008,11 @@ async function setStudentPlan(id, plan){
   loadStudents();
 }
 async function toggleStudentActive(id, currentlyActive){
-  const { error } = await sb.from('profiles').update({ is_active: !currentlyActive }).eq('id', id);
+  // Deactivating also downgrades the student to the Free plan (they keep read access, not premium).
+  const updates = currentlyActive ? { is_active: false, plan: 'free' } : { is_active: true };
+  const { error } = await sb.from('profiles').update(updates).eq('id', id);
   if(error){ toast('Update failed: ' + error.message); return; }
-  toast(currentlyActive ? 'Student deactivated.' : 'Student activated.');
+  toast(currentlyActive ? 'Student deactivated and moved to Free plan.' : 'Student activated.');
   loadStudents();
 }
 async function saveAutoInactiveDate(id){
