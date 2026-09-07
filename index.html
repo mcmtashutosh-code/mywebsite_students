@@ -230,8 +230,8 @@ img{max-width:100%;}
 .mv-list{margin:0; padding-left:18px; color:var(--text-dim); font-size:13.5px; line-height:1.8;}
 .mv-text{margin:0; color:var(--text-dim); font-size:13.5px; line-height:1.7;}
 .footer-social{display:flex; justify-content:center; gap:14px; padding:18px 0 0;}
-.footer-social a{width:38px; height:38px; border-radius:50%; background:var(--panel); border:1px solid var(--line-soft); display:flex; align-items:center; justify-content:center; font-size:17px; text-decoration:none; color:var(--brand);}
-.footer-social a:hover{border-color:var(--brand); background:var(--brand); color:#fff; transform:translateY(-2px);}
+.footer-social a{width:38px; height:38px; border-radius:50%; background:var(--panel); border:1px solid var(--line-soft); display:flex; align-items:center; justify-content:center; font-size:17px; text-decoration:none; color:var(--text-dim);}
+.footer-social a:hover{border-color:var(--seal); color:var(--seal); transform:translateY(-2px);}
 
 /* ================= GALLERY ================= */
 .gallery-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px;}
@@ -424,7 +424,6 @@ button:active, .btn-sm:active, .btn-full:active, .btn-login:active{transform:sca
 footer{text-align:center; padding:24px 18px; color:var(--text-mute); font-size:12px; border-top:1px solid var(--line-soft); margin-top:30px;}
 footer b{color:var(--gold);}
 </style>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body oncontextmenu="return false;" onkeydown="if((event.ctrlKey||event.metaKey)&&['p','s','u','c'].includes(event.key.toLowerCase())){event.preventDefault();}">
 
@@ -1339,13 +1338,7 @@ async function loadFounderProfile(){
   }
 }
 
-const SOCIAL_ICONS = {
-  facebook:  { cls:'fa-brands fa-facebook-f', color:'#1877F2', label:'Facebook' },
-  instagram: { cls:'fa-brands fa-instagram',  color:'#E4405F', label:'Instagram' },
-  youtube:   { cls:'fa-brands fa-youtube',    color:'#FF0000', label:'YouTube' },
-  whatsapp:  { cls:'fa-brands fa-whatsapp',   color:'#25D366', label:'WhatsApp' },
-  telegram:  { cls:'fa-brands fa-telegram',   color:'#26A5E4', label:'Telegram' }
-};
+const SOCIAL_ICONS = { facebook:'📘', instagram:'📸', youtube:'▶️', whatsapp:'💬', telegram:'✈️' };
 /* ================= FESTIVAL GREETING TICKER (site-wide) ================= */
 async function loadFestivalTicker(){
   const keys = ['festival_message', 'festival_enabled', 'festival_speed', 'festival_bg_color', 'festival_text_color'];
@@ -1361,7 +1354,12 @@ async function loadFestivalTicker(){
   const track = document.getElementById('festivalTickerTrack');
   const sparkle = '<span class="festival-sparkle">✨</span>';
   track.innerHTML = `${sparkle} &nbsp;${esc(map.festival_message)}&nbsp; ${sparkle} &nbsp;&nbsp;&nbsp;&nbsp;${sparkle} &nbsp;${esc(map.festival_message)}&nbsp; ${sparkle}`;
-  track.style.animationDuration = (map.festival_speed || '22') + 's';
+  // festival_speed stores a MULTIPLIER (x0.5, x1, x2, x3) — a higher multiplier means faster.
+  // Base duration (at x1) is intentionally slow/comfortable to read; actual duration = base ÷ multiplier.
+  const BASE_DURATION_SECONDS = 40;
+  const multiplier = parseFloat(map.festival_speed) || 1;
+  const durationSeconds = BASE_DURATION_SECONDS / multiplier;
+  track.style.animationDuration = durationSeconds + 's';
   wrap.style.background = map.festival_bg_color || '#7a1f3d';
   track.style.color = map.festival_text_color || '#ffd700';
   wrap.style.display = 'block';
@@ -1376,8 +1374,8 @@ async function loadSocialLinks(){
   if(!links.length){ el.style.display = 'none'; return; }
   el.innerHTML = links.map(row => {
     const platform = row.key.replace('social_', '');
-    const ic = SOCIAL_ICONS[platform] || { cls:'fa-solid fa-link', color:'var(--seal)', label:platform };
-    return `<a href="${esc(row.value)}" target="_blank" rel="noopener" title="${ic.label}" style="--brand:${ic.color}"><i class="${ic.cls}"></i></a>`;
+    const icon = SOCIAL_ICONS[platform] || '🔗';
+    return `<a href="${esc(row.value)}" target="_blank" rel="noopener" title="${platform}">${icon}</a>`;
   }).join('');
   el.style.display = 'flex';
 }
