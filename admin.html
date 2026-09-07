@@ -211,6 +211,13 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
         <div class="stat-card"><div class="num" id="statJobs">–</div><div class="lbl">Active Jobs</div></div>
         <div class="stat-card"><div class="num" id="statNotes">–</div><div class="lbl">Notes Uploaded</div></div>
       </div>
+      <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Students</span></div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="statTotalStudents">–</div><div class="lbl">Total Registered</div></div>
+        <div class="stat-card"><div class="num" id="statTodayStudents">–</div><div class="lbl">Registered Today</div></div>
+        <div class="stat-card"><div class="num" id="statActiveStudents">–</div><div class="lbl">Active</div></div>
+        <div class="stat-card"><div class="num" id="statInactiveStudents">–</div><div class="lbl">Inactive</div></div>
+      </div>
       <div class="section-head" style="margin-top:22px;"><span class="section-title" style="font-size:16px;">Site Visits</span></div>
       <div class="stat-grid">
         <div class="stat-card"><div class="num" id="statVisitToday">–</div><div class="lbl">Today</div></div>
@@ -751,6 +758,35 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
   </div>
 </div>
 
+<!-- ================= STUDENT STATUS CONFIRM MODAL ================= -->
+<div id="studentStatusOverlay" style="display:none; position:fixed; inset:0; z-index:130; background:rgba(6,10,18,.75); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--panel); border:1px solid var(--line-soft); border-radius:14px; max-width:420px; width:100%; padding:22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="margin:0; font-size:17px;" id="studentStatusModalTitle">Confirm Action</h3>
+      <button onclick="closeStudentStatusModal()" style="background:none; border:none; color:var(--text-mute); font-size:18px; cursor:pointer;">✕</button>
+    </div>
+
+    <div style="background:var(--bg-2); border:1px solid var(--line-soft); border-radius:10px; padding:14px; margin-bottom:16px;">
+      <p style="margin:0 0 8px; font-size:11px; color:var(--text-mute); text-transform:uppercase; letter-spacing:.05em;">Student Details</p>
+      <p style="margin:0 0 4px; font-size:15px; font-weight:700;" id="studentStatusName"></p>
+      <p style="margin:0 0 3px; font-size:13px; color:var(--text-dim);">📧 <span id="studentStatusEmail"></span></p>
+      <p style="margin:0 0 3px; font-size:13px; color:var(--text-dim);">📱 <span id="studentStatusPhone"></span></p>
+      <p style="margin:0; font-size:13px; color:var(--text-dim);">🎯 <span id="studentStatusExam"></span> — Plan: <span id="studentStatusPlan"></span></p>
+    </div>
+
+    <p style="font-size:13px; color:var(--text-dim); margin:0 0 12px;" id="studentStatusActionText"></p>
+
+    <label class="field-label">Apna Admin Password Confirm Karein</label>
+    <input type="password" id="studentStatusPassword" placeholder="Admin password">
+    <div class="error-text" id="studentStatusError"></div>
+
+    <div style="display:flex; gap:8px; margin-top:14px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeStudentStatusModal()">Cancel</button>
+      <button class="btn btn-danger" style="flex:1;" id="studentStatusConfirmBtn" onclick="confirmStudentStatusChange()">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ================= THEME (dark/light) — applied immediately to avoid flash ================= */
 (function(){
@@ -983,7 +1019,7 @@ async function loadStudents(){
             <option value="notes_only" ${s.plan==='notes_only'?'selected':''}>Notes Only</option>
             <option value="full_access" ${s.plan==='full_access'?'selected':''}>Full Access</option>
           </select>
-          <button class="btn btn-xs ${isActive?'btn-danger':'btn-primary'}" onclick="toggleStudentActive('${s.id}', ${isActive})">${isActive?'Deactivate':'Activate'}</button>
+          <button class="btn btn-xs ${isActive?'btn-danger':'btn-primary'}" onclick='openStudentStatusModal(${JSON.stringify(s).replace(/'/g,"&#39;")}, ${isActive})'>${isActive?'Deactivate':'Activate'}</button>
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
@@ -1007,13 +1043,53 @@ async function setStudentPlan(id, plan){
   toast('Plan updated successfully.');
   loadStudents();
 }
-async function toggleStudentActive(id, currentlyActive){
-  // Deactivating also downgrades the student to the Free plan (they keep read access, not premium).
+let pendingStudentStatusChange = null; // { id, currentlyActive }
+
+function openStudentStatusModal(student, currentlyActive){
+  pendingStudentStatusChange = { id: student.id, currentlyActive };
+  document.getElementById('studentStatusModalTitle').textContent = currentlyActive ? 'Confirm: Deactivate Student' : 'Confirm: Activate Student';
+  document.getElementById('studentStatusName').textContent = student.full_name || '(No name)';
+  document.getElementById('studentStatusEmail').textContent = student.email || '—';
+  document.getElementById('studentStatusPhone').textContent = student.phone || '—';
+  document.getElementById('studentStatusExam').textContent = student.exam_category || '—';
+  document.getElementById('studentStatusPlan').textContent = student.plan === 'full_access' ? 'Full Access' : student.plan === 'notes_only' ? 'Notes Only' : 'Free';
+  document.getElementById('studentStatusActionText').textContent = currentlyActive
+    ? 'Ye student DEACTIVATE ho jayega aur unka plan automatically FREE ho jayega. Confirm karne ke liye apna password daalein.'
+    : 'Ye student ACTIVATE ho jayega. Confirm karne ke liye apna password daalein.';
+  document.getElementById('studentStatusPassword').value = '';
+  document.getElementById('studentStatusError').textContent = '';
+  document.getElementById('studentStatusOverlay').style.display = 'flex';
+}
+function closeStudentStatusModal(){
+  document.getElementById('studentStatusOverlay').style.display = 'none';
+  pendingStudentStatusChange = null;
+}
+async function confirmStudentStatusChange(){
+  if(!pendingStudentStatusChange) return;
+  const password = document.getElementById('studentStatusPassword').value;
+  const errEl = document.getElementById('studentStatusError'); errEl.textContent = '';
+  if(!password){ errEl.textContent = 'Password daalein.'; return; }
+
+  document.getElementById('studentStatusConfirmBtn').disabled = true;
+
+  // Verify the admin's password by re-authenticating with their own email + entered password.
+  const { error: authError } = await sb.auth.signInWithPassword({ email: currentUser.email, password });
+  if(authError){
+    document.getElementById('studentStatusConfirmBtn').disabled = false;
+    errEl.textContent = 'Galat password. Dobara try karein.';
+    return;
+  }
+
+  const { id, currentlyActive } = pendingStudentStatusChange;
   const updates = currentlyActive ? { is_active: false, plan: 'free' } : { is_active: true };
   const { error } = await sb.from('profiles').update(updates).eq('id', id);
-  if(error){ toast('Update failed: ' + error.message); return; }
+  document.getElementById('studentStatusConfirmBtn').disabled = false;
+  if(error){ errEl.textContent = 'Update failed: ' + error.message; return; }
+
   toast(currentlyActive ? 'Student deactivated and moved to Free plan.' : 'Student activated.');
+  closeStudentStatusModal();
   loadStudents();
+  loadDashStats();
 }
 async function saveAutoInactiveDate(id){
   const input = document.getElementById('autoInactive_'+id);
@@ -1790,17 +1866,30 @@ async function deleteBanner(id, imagePath){
 }
 
 async function loadDashStats(){
-  const [{count:nc}, {count:vc}, {count:jc}, {count:noc}, visitStatsRes] = await Promise.all([
+  const todayStart = new Date();
+  todayStart.setHours(0,0,0,0);
+
+  const [{count:nc}, {count:vc}, {count:jc}, {count:noc}, visitStatsRes,
+         {count:totalStudents}, {count:todayStudents}, {count:activeStudents}, {count:inactiveStudents}] = await Promise.all([
     sb.from('notices').select('*', {count:'exact', head:true}).eq('is_active', true),
     sb.from('video_links').select('*', {count:'exact', head:true}),
     sb.from('jobs').select('*', {count:'exact', head:true}).eq('is_active', true),
     sb.from('notes').select('*', {count:'exact', head:true}),
     sb.rpc('get_visit_stats'),
+    sb.from('profiles').select('*', {count:'exact', head:true}).eq('role', 'student'),
+    sb.from('profiles').select('*', {count:'exact', head:true}).eq('role', 'student').gte('created_at', todayStart.toISOString()),
+    sb.from('profiles').select('*', {count:'exact', head:true}).eq('role', 'student').neq('is_active', false),
+    sb.from('profiles').select('*', {count:'exact', head:true}).eq('role', 'student').eq('is_active', false),
   ]);
   document.getElementById('statNotices').textContent = nc ?? 0;
   document.getElementById('statVideos').textContent = vc ?? 0;
   document.getElementById('statJobs').textContent = jc ?? 0;
   document.getElementById('statNotes').textContent = noc ?? 0;
+
+  document.getElementById('statTotalStudents').textContent = totalStudents ?? 0;
+  document.getElementById('statTodayStudents').textContent = todayStudents ?? 0;
+  document.getElementById('statActiveStudents').textContent = activeStudents ?? 0;
+  document.getElementById('statInactiveStudents').textContent = inactiveStudents ?? 0;
 
   const vs = visitStatsRes.data;
   document.getElementById('statVisitToday').textContent = vs?.today ?? '–';
