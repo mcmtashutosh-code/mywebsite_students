@@ -1341,13 +1341,18 @@ async function loadFounderProfile(){
 const SOCIAL_ICONS = { facebook:'📘', instagram:'📸', youtube:'▶️', whatsapp:'💬', telegram:'✈️' };
 /* ================= FESTIVAL GREETING TICKER (site-wide) ================= */
 async function loadFestivalTicker(){
-  const keys = ['festival_message', 'festival_enabled', 'festival_speed', 'festival_bg_color', 'festival_text_color'];
+  const keys = ['festival_message', 'festival_enabled', 'festival_speed', 'festival_bg_color', 'festival_text_color', 'festival_end_datetime'];
   const { data, error } = await sb.from('site_settings').select('key, value').in('key', keys);
   const wrap = document.getElementById('festivalTicker');
   if(error || !data || !data.length){ wrap.style.display = 'none'; return; }
   const map = {};
   data.forEach(row => { map[row.key] = row.value; });
   if(map.festival_enabled !== 'true' || !map.festival_message || !map.festival_message.trim()){
+    wrap.style.display = 'none';
+    return;
+  }
+  // Auto-expire — if an end date/time was set and it has passed, hide the banner.
+  if(map.festival_end_datetime && new Date(map.festival_end_datetime) < new Date()){
     wrap.style.display = 'none';
     return;
   }
@@ -1363,6 +1368,15 @@ async function loadFestivalTicker(){
   wrap.style.background = map.festival_bg_color || '#7a1f3d';
   track.style.color = map.festival_text_color || '#ffd700';
   wrap.style.display = 'block';
+
+  // If the banner is currently showing and has an expiry time, automatically
+  // hide it live (without needing a page refresh) once that time is reached.
+  if(map.festival_end_datetime){
+    const msUntilExpiry = new Date(map.festival_end_datetime).getTime() - Date.now();
+    if(msUntilExpiry > 0 && msUntilExpiry < 24*60*60*1000){ // only schedule if expiring within 24h (avoid huge timers)
+      setTimeout(()=>{ wrap.style.display = 'none'; }, msUntilExpiry);
+    }
+  }
 }
 
 async function loadSocialLinks(){
