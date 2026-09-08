@@ -549,8 +549,8 @@ footer b{color:var(--gold);}
     <div class="section">
       <div class="section-head"><span class="section-title">Notes</span></div>
       <div class="chiprow" id="notesCatChips">
-        <button class="chip sel" data-c="academic" onclick="setNotesCategory('academic')">Academic</button>
-        <button class="chip" data-c="competitive" onclick="setNotesCategory('competitive')">Competitive</button>
+        <button class="chip" data-c="academic" onclick="setNotesCategory('academic')">Academic</button>
+        <button class="chip sel" data-c="competitive" onclick="setNotesCategory('competitive')">Competitive</button>
       </div>
       <div class="chiprow" id="notesSubFilter"></div>
       <div id="notesList"><div class="empty-note">Loading…</div></div>
@@ -948,7 +948,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dis
 
 let currentUser = null;
 let currentProfile = null;
-let notesCategory = 'academic';
+let notesCategory = 'competitive';
 let jobsCategory = 'government';
 let jobsSubtype = 'latest_job';
 let liveTab = 'upcoming';
@@ -992,7 +992,7 @@ function renderView(name, updateHistory){
   else { document.getElementById('view-home').classList.add('active'); resolved = 'home'; }
   document.querySelectorAll('#pillnav button').forEach(b=>b.classList.toggle('active', b.dataset.v===resolved));
   window.scrollTo({top:0, behavior:'smooth'});
-  if(resolved==='notes') loadNotes();
+  if(resolved==='notes'){ if(notesCategory==='competitive' && !document.getElementById('notesSubFilter').innerHTML.trim()) loadNotesExamChips(); loadNotes(); }
   if(resolved==='jobs') loadJobs();
   if(resolved==='live') loadVideos();
   if(resolved==='notice') loadNoticesFull();
