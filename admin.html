@@ -842,7 +842,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 <div id="emailPinOverlay" style="display:none; position:fixed; inset:0; z-index:130; background:rgba(6,10,18,.75); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--panel); border:1px solid var(--line-soft); border-radius:14px; max-width:380px; width:100%; padding:22px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <h3 style="margin:0; font-size:17px;">Verify to Send Email</h3>
+      <h3 style="margin:0; font-size:17px;" id="emailPinModalTitle">Verify to Reveal Contact Info</h3>
       <button onclick="closeEmailPinModal()" style="background:none; border:none; color:var(--text-mute); font-size:18px; cursor:pointer;">✕</button>
     </div>
 
@@ -859,7 +859,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
 
     <div style="display:flex; gap:8px; margin-top:14px;">
       <button class="btn btn-ghost" style="flex:1;" onclick="closeEmailPinModal()">Cancel</button>
-      <button class="btn btn-primary" style="flex:1;" onclick="confirmEmailPin()">Verify & Open Mail</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="confirmEmailPin()" id="emailPinConfirmBtn">Verify & Reveal</button>
     </div>
   </div>
 </div>
@@ -1053,36 +1053,81 @@ function setStudentPlanTab(tab){
   document.getElementById('studentTabFullBtn').classList.toggle('active', tab==='full_access');
   loadStudents();
 }
-/* ================= EMAIL STUDENT (PIN-protected) ================= */
-let pendingEmailStudent = null; // { email }
-async function requestEmailStudent(studentEmail, studentName){
+/* ================= EMAIL/PHONE MASKING + REVEAL (PIN-protected, 3-attempt lockout) ================= */
+const revealedStudents = new Set(); // student IDs whose contact info has been unmasked this session
+let pinFailCount = 0;
+let pendingReveal = null; // { id, email, phone, action }
+
+function maskEmail(email){
+  if(!email) return '—';
+  const [user, domain] = email.split('@');
+  if(!domain) return '***';
+  const domainParts = domain.split('.');
+  const maskedUser = user.length <= 2 ? user[0]+'*' : user[0] + '*'.repeat(Math.max(user.length-2,2)) + user.slice(-1);
+  const maskedDomain = domainParts[0][0] + '*'.repeat(Math.max(domainParts[0].length-1,2));
+  return `${maskedUser}@${maskedDomain}.${domainParts.slice(1).join('.')}`;
+}
+function maskPhone(phone){
+  if(!phone) return '—';
+  const digits = phone.replace(/\D/g,'');
+  if(digits.length < 4) return '*'.repeat(digits.length);
+  return digits.slice(0,2) + '*'.repeat(digits.length-4) + digits.slice(-2);
+}
+
+async function requestRevealContact(id, email, phone, name, action){
   const { data } = await sb.from('site_settings').select('value').eq('key', 'email_action_pin').maybeSingle();
   if(!data || !data.value){
     toast('Pehle Settings me "Email Action PIN" set karein.');
     return;
   }
+  if(revealedStudents.has(id)){
+    // Already revealed this session — just perform the action directly, no need to re-prompt.
+    if(action === 'email') window.location.href = 'mailto:' + email;
+    return;
+  }
   const { data: fromData } = await sb.from('site_settings').select('value').eq('key', 'contact_email').maybeSingle();
-  pendingEmailStudent = { email: studentEmail };
+  pendingReveal = { id, email, phone, action };
+  document.getElementById('emailPinModalTitle').textContent = action === 'email' ? 'Verify to Reveal & Email' : 'Verify to Reveal Number';
+  document.getElementById('emailPinConfirmBtn').textContent = action === 'email' ? 'Verify & Open Mail' : 'Verify & Reveal';
   document.getElementById('emailPinFrom').textContent = (fromData && fromData.value) || 'dhyeodaya@gmail.com';
-  document.getElementById('emailPinTo').textContent = `${studentName} (${studentEmail})`;
+  document.getElementById('emailPinTo').textContent = `${name}`;
   document.getElementById('emailPinInput').value = '';
   document.getElementById('emailPinModalError').textContent = '';
   document.getElementById('emailPinOverlay').style.display = 'flex';
 }
 function closeEmailPinModal(){
   document.getElementById('emailPinOverlay').style.display = 'none';
-  pendingEmailStudent = null;
+  pendingReveal = null;
 }
 async function confirmEmailPin(){
-  if(!pendingEmailStudent) return;
+  if(!pendingReveal) return;
   const entered = document.getElementById('emailPinInput').value.trim();
   const errEl = document.getElementById('emailPinModalError'); errEl.textContent = '';
   if(!entered){ errEl.textContent = 'PIN daalein.'; return; }
   const { data } = await sb.from('site_settings').select('value').eq('key', 'email_action_pin').maybeSingle();
   const correctPin = data && data.value;
-  if(entered !== correctPin){ errEl.textContent = 'Galat PIN. Dobara try karein.'; return; }
-  window.location.href = 'mailto:' + pendingEmailStudent.email;
+
+  if(entered !== correctPin){
+    pinFailCount++;
+    if(pinFailCount >= 3){
+      alert('3 baar galat PIN — security ke liye aapko logout kiya ja raha hai.');
+      closeEmailPinModal();
+      await doAdminLogout();
+      return;
+    }
+    errEl.textContent = `Galat PIN. ${3-pinFailCount} attempt(s) bache hain.`;
+    return;
+  }
+
+  pinFailCount = 0;
+  const { id, email, phone, action } = pendingReveal;
+  revealedStudents.add(id);
+  const emailEl = document.getElementById('emailDisp_'+id);
+  const phoneEl = document.getElementById('phoneDisp_'+id);
+  if(emailEl) emailEl.textContent = email;
+  if(phoneEl) phoneEl.textContent = phone;
   closeEmailPinModal();
+  if(action === 'email') window.location.href = 'mailto:' + email;
 }
 
 async function loadStudents(){
@@ -1120,7 +1165,7 @@ async function loadStudents(){
       <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
         <div>
           <p class="li-title">${esc(s.full_name)} ${planBadge(s.plan)} ${isActive ? '<span style="color:var(--seal); font-size:11.5px; font-weight:700; margin-left:6px;">● Active</span>' : '<span style="color:var(--stamp); font-size:11.5px; font-weight:700; margin-left:6px;">● Inactive</span>'}</p>
-          <div class="li-meta"><span style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted;" onclick='requestEmailStudent(${JSON.stringify(s.email)}, ${JSON.stringify(s.full_name)})'>✉️ ${esc(s.email)}</span>${s.phone?`<span>${esc(s.phone)}</span>`:''}${s.exam_category?`<span>${esc(s.exam_category)}</span>`:''}<span>👁 ${visitMap[s.id] || 0} visits</span><span>Joined ${joinDate}</span></div>
+          <div class="li-meta"><span style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted;" onclick='requestRevealContact("${s.id}", ${JSON.stringify(s.email)}, ${JSON.stringify(s.phone||'')}, ${JSON.stringify(s.full_name)}, "email")'>✉️ <span id="emailDisp_${s.id}">${revealedStudents.has(s.id) ? esc(s.email) : maskEmail(s.email)}</span></span>${s.phone?`<span style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted;" onclick='requestRevealContact("${s.id}", ${JSON.stringify(s.email)}, ${JSON.stringify(s.phone||'')}, ${JSON.stringify(s.full_name)}, "phone")'>📱 <span id="phoneDisp_${s.id}">${revealedStudents.has(s.id) ? esc(s.phone) : maskPhone(s.phone)}</span></span>`:''}${s.exam_category?`<span>${esc(s.exam_category)}</span>`:''}<span>👁 ${visitMap[s.id] || 0} visits</span><span>Joined ${joinDate}</span></div>
         </div>
         <div class="li-actions">
           <select style="width:auto; padding:8px 10px; font-size:12px;" onchange="setStudentPlan('${s.id}', this.value)">
