@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -720,17 +721,17 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
         <input type="text" id="newSocialUrl" placeholder="https://...">
         <label class="field-label">Icon</label>
         <select id="newSocialIcon">
-          <option value="📘">📘 Facebook</option>
-          <option value="📸">📸 Instagram</option>
-          <option value="▶️">▶️ YouTube</option>
-          <option value="💬">💬 WhatsApp</option>
-          <option value="✈️">✈️ Telegram</option>
-          <option value="✖️">✖️ Twitter / X</option>
-          <option value="💼">💼 LinkedIn</option>
-          <option value="🎮">🎮 Discord</option>
-          <option value="🌐">🌐 Website / Other</option>
-          <option value="📌">📌 Pinterest</option>
-          <option value="🎵">🎵 TikTok</option>
+          <option value="fa-brands fa-facebook-f">Facebook</option>
+          <option value="fa-brands fa-instagram">Instagram</option>
+          <option value="fa-brands fa-youtube">YouTube</option>
+          <option value="fa-brands fa-whatsapp">WhatsApp</option>
+          <option value="fa-brands fa-telegram">Telegram</option>
+          <option value="fa-brands fa-x-twitter">Twitter / X</option>
+          <option value="fa-brands fa-linkedin-in">LinkedIn</option>
+          <option value="fa-brands fa-discord">Discord</option>
+          <option value="fa-solid fa-globe">Website / Other</option>
+          <option value="fa-brands fa-pinterest-p">Pinterest</option>
+          <option value="fa-brands fa-tiktok">TikTok</option>
         </select>
         <div class="error-text" id="newSocialError"></div>
         <button class="btn btn-primary" style="margin-top:14px;" onclick="addSocialLink()">+ Add Link</button>
@@ -1555,7 +1556,7 @@ async function loadSocialLinksList(){
   el.innerHTML = data.map(s=>`
     <div class="list-item">
       <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:20px;">${s.icon}</span>
+        <span style="width:32px; height:32px; border-radius:50%; background:var(--seal); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="${esc(s.icon)}" style="color:#fff; font-size:14px;"></i></span>
         <div>
           <p class="li-title">${esc(s.platform_name)} ${!s.is_active?'<span style="color:var(--stamp); font-size:11px;">(Hidden)</span>':''}</p>
           <div class="li-meta"><span>${esc(s.url)}</span></div>
@@ -1596,7 +1597,7 @@ async function addSocialLink(){
   editingSocialLinkId = null;
   document.getElementById('newSocialPlatform').value = '';
   document.getElementById('newSocialUrl').value = '';
-  document.getElementById('newSocialIcon').value = '📘';
+  document.getElementById('newSocialIcon').value = 'fa-brands fa-facebook-f';
   toast(wasEditing ? 'Link updated.' : 'Link added.');
   loadSocialLinksList();
 }
