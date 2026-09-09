@@ -54,6 +54,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
@@ -233,8 +234,8 @@ img{max-width:100%;}
 .footer-contact-email{text-align:center; padding:22px 16px 0; font-size:13px; color:var(--text-mute);}
 .footer-contact-email a{color:var(--seal); font-weight:600; text-decoration:none;}
 .footer-contact-email a:hover{text-decoration:underline;}
-.footer-social a{width:38px; height:38px; border-radius:50%; background:var(--panel); border:1px solid var(--line-soft); display:flex; align-items:center; justify-content:center; font-size:17px; text-decoration:none; color:var(--text-dim);}
-.footer-social a:hover{border-color:var(--seal); color:var(--seal); transform:translateY(-2px);}
+.footer-social a{width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; text-decoration:none; color:#fff; transition:transform .2s;}
+.footer-social a:hover{transform:translateY(-3px);}
 
 /* ================= GALLERY ================= */
 .gallery-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px;}
@@ -1402,6 +1403,24 @@ async function loadFestivalTicker(){
   }
 }
 
+const BRAND_ICON_COLORS = {
+  'fa-facebook-f': '#1877F2',
+  'fa-instagram': '#E4405F',
+  'fa-youtube': '#FF0000',
+  'fa-whatsapp': '#25D366',
+  'fa-telegram': '#26A5E4',
+  'fa-x-twitter': '#000000',
+  'fa-linkedin-in': '#0A66C2',
+  'fa-discord': '#5865F2',
+  'fa-globe': '#1f7a5c',
+  'fa-pinterest-p': '#E60023',
+  'fa-tiktok': '#000000',
+};
+function brandColorForIcon(iconClass){
+  for(const key in BRAND_ICON_COLORS){ if(iconClass.includes(key)) return BRAND_ICON_COLORS[key]; }
+  return '#1f7a5c'; // fallback to brand seal color
+}
+
 async function loadSocialLinks(){
   const emailEl = document.getElementById('footerContactEmail');
   const el = document.getElementById('footerSocialLinks');
@@ -1421,7 +1440,7 @@ async function loadSocialLinks(){
   const links = linksRes.data || [];
   if(!links.length){ el.style.display = 'none'; return; }
   el.innerHTML = links.map(link =>
-    `<a href="${esc(link.url)}" target="_blank" rel="noopener" title="${esc(link.platform_name)}">${link.icon}</a>`
+    `<a href="${esc(link.url)}" target="_blank" rel="noopener" title="${esc(link.platform_name)}" style="background:${brandColorForIcon(link.icon)};"><i class="${esc(link.icon)}"></i></a>`
   ).join('');
   el.style.display = 'flex';
 }
