@@ -242,7 +242,10 @@ img{max-width:100%;}
 
 /* ================= SYLLABUS ================= */
 .syllabus-subhead{font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--gold); margin:22px 0 10px;}
-.syllabus-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:12px; padding:16px 18px; margin-bottom:10px;}
+.syllabus-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:14px;}
+@media (max-width:900px){.syllabus-grid{grid-template-columns:repeat(2, 1fr);}}
+@media (max-width:600px){.syllabus-grid{grid-template-columns:1fr;}}
+.syllabus-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:12px; padding:16px 18px; max-height:420px; overflow-y:auto;}
 .syllabus-card h4{margin:0 0 8px; font-size:14.5px; color:var(--text);}
 .syllabus-card p{margin:0; font-size:13px; color:var(--text-dim); line-height:1.7; white-space:pre-line;}
 .syllabus-process-item{display:flex; gap:12px; margin-bottom:12px;}
@@ -1731,12 +1734,14 @@ function renderSyllabusContent(){
   let html = '';
   if(syllabusItems.length){
     html += `<div class="syllabus-subhead">📋 Syllabus</div>`;
+    html += `<div class="syllabus-grid">`;
     html += syllabusItems.map(e => `
       <div class="syllabus-card">
         <h4>${esc(e.title)}</h4>
         <p>${esc(e.content)}</p>
       </div>
     `).join('');
+    html += `</div>`;
   }
   if(processItems.length){
     html += `<div class="syllabus-subhead">🎯 Exam Process</div>`;
@@ -2566,33 +2571,42 @@ sb.auth.onAuthStateChange((event, session)=>{
 
 async function init(){
   const splashStart = Date.now();
-  applyThemeIcon();
-  await loadProfile();
-  refreshAuthUI();
-  { const h = location.hash.slice(1); renderView(isAuthHash(h) ? 'home' : (h || 'home'), false); }
-  await loadNoticesHome();
-  await loadReachStats();
-  loadSuccessStories('home');
-  loadHomeFAQs();
-  loadFeaturedNotes();
-  loadBanners();
-  loadSocialLinks();
-  loadFestivalTicker();
-  logSiteVisit();
-
-  // Keep the splash visible for at least 700ms so it doesn't flash on fast loads
-  const elapsed = Date.now() - splashStart;
-  setTimeout(()=>{
-    document.getElementById('splashScreen')?.classList.add('hide');
-  }, Math.max(0, 700 - elapsed));
+  try{
+    applyThemeIcon();
+    try{ await loadProfile(); }catch(e){ console.error('loadProfile failed:', e); }
+    refreshAuthUI();
+    { const h = location.hash.slice(1); renderView(isAuthHash(h) ? 'home' : (h || 'home'), false); }
+    // Run the rest in parallel and tolerate individual failures — one broken
+    // request should never be able to keep the splash screen up forever.
+    await Promise.allSettled([
+      loadNoticesHome(),
+      loadReachStats(),
+      loadSuccessStories('home'),
+      loadHomeFAQs(),
+      loadFeaturedNotes(),
+      loadBanners(),
+      loadSocialLinks(),
+      loadFestivalTicker(),
+    ]);
+    logSiteVisit();
+  } catch(e){
+    console.error('init() failed:', e);
+  } finally {
+    // Keep the splash visible for at least 700ms so it doesn't flash on fast loads
+    const elapsed = Date.now() - splashStart;
+    setTimeout(()=>{
+      document.getElementById('splashScreen')?.classList.add('hide');
+    }, Math.max(0, 700 - elapsed));
+  }
 }
 function logSiteVisit(){
   // Fire-and-forget — one row per real page load, doesn't block the UI.
   sb.from('site_visits').insert({ user_id: currentUser?.id || null }).then(()=>{}, ()=>{});
 }
 init();
-// Safety fallback — never let the splash screen block the site for more than 6s
-setTimeout(()=>{ document.getElementById('splashScreen')?.classList.add('hide'); }, 6000);
+// Safety fallback — never let the splash screen block the site for more than 3s,
+// no matter what goes wrong above.
+setTimeout(()=>{ document.getElementById('splashScreen')?.classList.add('hide'); }, 3000);
 </script>
 </body>
 </html>
