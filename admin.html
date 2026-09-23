@@ -139,6 +139,7 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
       <button data-v="gallery" onclick="showView('gallery')">Gallery</button>
       <button data-v="banners" onclick="showView('banners')">Banners</button>
       <button data-v="placement" onclick="showView('placement')">Placement Tracker</button>
+      <button data-v="syllabus" onclick="showView('syllabus')">Syllabus</button>
       <button data-v="settings" onclick="showView('settings')">Settings</button>
     </div>
     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark/light mode" id="themeToggleBtn">🌙</button>
@@ -619,6 +620,39 @@ label.field-label{display:block; font-size:10.5px; font-weight:700; letter-spaci
     </div>
   </div>
 
+  <!-- ================= SYLLABUS ================= -->
+  <div class="view" id="view-syllabus">
+    <div class="section">
+      <div class="section-head"><span class="section-title" id="syllabusFormHeading">Add Syllabus / Exam Process Entry</span></div>
+      <div class="panel-card">
+        <label class="field-label">Exam Name</label>
+        <input type="text" id="syllabusExamName" placeholder="e.g. TCS IT/BPS, SSC, Bank" list="syllabusExamSuggestions">
+        <datalist id="syllabusExamSuggestions"></datalist>
+
+        <label class="field-label">Section Type</label>
+        <select id="syllabusSectionType">
+          <option value="syllabus">Syllabus Topic</option>
+          <option value="exam_process">Exam Process Stage</option>
+        </select>
+
+        <label class="field-label">Title</label>
+        <input type="text" id="syllabusTitle" placeholder="e.g. Quantitative Aptitude — or — Stage 1: Online Written Test">
+
+        <label class="field-label">Content (topics list / description — one per line is fine)</label>
+        <textarea id="syllabusContent" rows="6" placeholder="e.g.&#10;Number System&#10;Percentage&#10;Profit & Loss&#10;Time & Work"></textarea>
+
+        <div class="error-text" id="syllabusError"></div>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <button class="btn btn-primary" id="syllabusSubmitBtn" onclick="submitSyllabusEntry()">Add Entry</button>
+          <button class="btn btn-ghost" id="syllabusCancelBtn" style="display:none;" onclick="cancelSyllabusEdit()">Cancel Edit</button>
+        </div>
+      </div>
+
+      <div class="section-head" style="margin-top:18px;"><span class="section-title" style="font-size:16px;">Existing Entries</span></div>
+      <div id="syllabusList"><div class="empty-note">Loading…</div></div>
+    </div>
+  </div>
+
   <div class="view" id="view-settings">
     <div class="section">
       <div class="section-head"><span class="section-title">Settings</span></div>
@@ -1051,6 +1085,7 @@ function showView(name){
   if(name==='support'){ loadTicketsAdmin(); loadFAQAdmin(); }
   if(name==='gallery') loadGalleryAdmin();
   if(name==='banners') loadBannersAdmin();
+  if(name==='syllabus') loadSyllabusAdmin();
   if(name==='students') loadStudents();
   if(name==='dash') loadDashStats();
   if(name==='settings'){ loadAboutText(); loadFounderProfile(); loadContactEmail(); loadEmailActionPin(); loadSocialLinksList(); loadFestivalBanner(); }
@@ -2128,6 +2163,108 @@ async function deleteBanner(id, imagePath){
   if(error){ toast('Delete fail: ' + error.message); return; }
   toast('Banner deleted.');
   loadBannersAdmin();
+}
+
+/* ================= SYLLABUS ================= */
+let editingSyllabusId = null;
+async function loadSyllabusAdmin(){
+  const el = document.getElementById('syllabusList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  const { data, error } = await sb.from('syllabus_entries').select('*').order('exam_name').order('section_type').order('order_index');
+  if(error){ el.innerHTML = '<div class="empty-note">Error: '+esc(error.message)+'</div>'; return; }
+
+  // populate exam name suggestions for the input's datalist
+  const examNames = [...new Set((data||[]).map(e=>e.exam_name))];
+  document.getElementById('syllabusExamSuggestions').innerHTML = examNames.map(n=>`<option value="${esc(n)}">`).join('');
+
+  if(!data || !data.length){ el.innerHTML = '<div class="empty-note">Koi syllabus entry add nahi hui abhi.</div>'; return; }
+
+  // group by exam_name, then by section_type
+  const grouped = {};
+  data.forEach(e => {
+    grouped[e.exam_name] = grouped[e.exam_name] || { syllabus: [], exam_process: [] };
+    grouped[e.exam_name][e.section_type].push(e);
+  });
+
+  el.innerHTML = Object.keys(grouped).map(examName => `
+    <div style="margin-bottom:20px;">
+      <p style="font-weight:700; font-size:15px; margin:0 0 8px; color:var(--gold);">${esc(examName)}</p>
+      ${grouped[examName].syllabus.length ? `<p style="font-size:11px; color:var(--text-mute); text-transform:uppercase; margin:8px 0 4px;">Syllabus</p>` : ''}
+      ${grouped[examName].syllabus.map(e => syllabusListItem(e)).join('')}
+      ${grouped[examName].exam_process.length ? `<p style="font-size:11px; color:var(--text-mute); text-transform:uppercase; margin:8px 0 4px;">Exam Process</p>` : ''}
+      ${grouped[examName].exam_process.map(e => syllabusListItem(e)).join('')}
+    </div>
+  `).join('');
+}
+function syllabusListItem(e){
+  return `
+    <div class="list-item">
+      <div>
+        <p class="li-title">${esc(e.title)} ${!e.is_active?'<span style="color:var(--stamp); font-size:11px;">(Hidden)</span>':''}</p>
+        <div class="li-meta"><span>${esc((e.content||'').slice(0,60))}${(e.content||'').length>60?'…':''}</span></div>
+      </div>
+      <div class="li-actions">
+        <button class="btn btn-ghost btn-xs" onclick='editSyllabusEntry(${JSON.stringify(e).replace(/'/g,"&#39;")})'>Edit</button>
+        <button class="btn btn-ghost btn-xs" onclick="toggleSyllabusActive('${e.id}', ${!e.is_active})">${e.is_active?'Hide':'Show'}</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteSyllabusEntry('${e.id}')">Delete</button>
+      </div>
+    </div>
+  `;
+}
+function editSyllabusEntry(e){
+  editingSyllabusId = e.id;
+  document.getElementById('syllabusExamName').value = e.exam_name;
+  document.getElementById('syllabusSectionType').value = e.section_type;
+  document.getElementById('syllabusTitle').value = e.title;
+  document.getElementById('syllabusContent').value = e.content;
+  document.getElementById('syllabusFormHeading').textContent = 'Edit Entry';
+  document.getElementById('syllabusSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('syllabusCancelBtn').style.display = 'inline-block';
+  document.getElementById('syllabusError').textContent = '';
+  document.querySelector('#view-syllabus .panel-card').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function cancelSyllabusEdit(){
+  editingSyllabusId = null;
+  document.getElementById('syllabusExamName').value = '';
+  document.getElementById('syllabusSectionType').value = 'syllabus';
+  document.getElementById('syllabusTitle').value = '';
+  document.getElementById('syllabusContent').value = '';
+  document.getElementById('syllabusFormHeading').textContent = 'Add Syllabus / Exam Process Entry';
+  document.getElementById('syllabusSubmitBtn').textContent = 'Add Entry';
+  document.getElementById('syllabusCancelBtn').style.display = 'none';
+  document.getElementById('syllabusError').textContent = '';
+}
+async function submitSyllabusEntry(){
+  const exam_name = document.getElementById('syllabusExamName').value.trim();
+  const section_type = document.getElementById('syllabusSectionType').value;
+  const title = document.getElementById('syllabusTitle').value.trim();
+  const content = document.getElementById('syllabusContent').value.trim();
+  const errEl = document.getElementById('syllabusError'); errEl.textContent = '';
+  if(!exam_name || !title || !content){ errEl.textContent = 'Exam Name, Title, aur Content zaroori hain.'; return; }
+
+  let error;
+  if(editingSyllabusId){
+    ({ error } = await sb.from('syllabus_entries').update({ exam_name, section_type, title, content }).eq('id', editingSyllabusId));
+  } else {
+    ({ error } = await sb.from('syllabus_entries').insert({ exam_name, section_type, title, content, created_by: currentUser.id }));
+  }
+  if(error){ errEl.textContent = 'Save fail: ' + error.message; return; }
+
+  const wasEditing = !!editingSyllabusId;
+  cancelSyllabusEdit();
+  toast(wasEditing ? 'Entry updated.' : 'Entry added.');
+  loadSyllabusAdmin();
+}
+async function toggleSyllabusActive(id, newVal){
+  await sb.from('syllabus_entries').update({ is_active: newVal }).eq('id', id);
+  loadSyllabusAdmin();
+}
+async function deleteSyllabusEntry(id){
+  if(editingSyllabusId === id) cancelSyllabusEdit();
+  const { error } = await sb.from('syllabus_entries').delete().eq('id', id);
+  if(error){ toast('Delete fail: ' + error.message); return; }
+  toast('Entry deleted.');
+  loadSyllabusAdmin();
 }
 
 async function loadDashStats(){
