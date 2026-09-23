@@ -250,6 +250,13 @@ img{max-width:100%;}
 .syllabus-card p{margin:0; font-size:13px; color:var(--text-dim); line-height:1.7; white-space:pre-line;}
 .syllabus-process-item{display:flex; gap:12px; margin-bottom:12px;}
 .syllabus-process-num{width:28px; height:28px; border-radius:50%; background:var(--seal); color:#eafff4; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;}
+.ep-table{width:100%; border-collapse:collapse; margin:10px 0; font-size:13px;}
+.ep-table th{background:var(--bg-2); color:var(--gold); text-align:left; padding:9px 12px; font-weight:700; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; border-bottom:2px solid var(--line-soft);}
+.ep-table td{padding:9px 12px; color:var(--text-dim); border-bottom:1px solid var(--line-soft);}
+.ep-table tbody tr:last-child td{border-bottom:none;}
+.ep-table tbody tr:hover td{background:var(--bg-2);}
+.ep-table-kv .ep-td-label{color:var(--text); font-weight:600; width:45%;}
+.ep-subhead{font-size:12.5px; font-weight:700; color:var(--seal); margin:14px 0 4px; text-transform:uppercase; letter-spacing:.03em;}
 .gallery-item{position:relative; border-radius:12px; overflow:hidden; cursor:pointer; aspect-ratio:4/3; background:var(--panel); border:1px solid var(--line-soft);}
 .gallery-item img{width:100%; height:100%; object-fit:cover; display:block; transition:transform .2s ease;}
 .gallery-item:hover img{transform:scale(1.05);}
@@ -1725,6 +1732,54 @@ function setSyllabusExam(name){
   document.querySelectorAll('#syllabusExamTabs .chip').forEach(c => c.classList.toggle('sel', c.textContent === name));
   renderSyllabusContent();
 }
+// Parses free-text content into a mix of paragraphs and proper HTML tables,
+// by detecting common patterns (used mainly for "Exam Process" cards where
+// admins typically type structured info like stats or section breakdowns).
+function formatStructuredContent(content){
+  const blocks = content.split(/\n\s*\n/); // split on blank lines
+  return blocks.map(block => {
+    let lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
+    if(!lines.length) return '';
+
+    const dashPattern = /^(.+?)\s+[—-]\s+(\d+)\s+questions?,?\s*(\d+)\s+minutes?$/i;
+    const kvPattern = /^([^:]{2,40}):\s*(.+)$/;
+
+    // If the first line is a short heading ("...:") and the REST of the lines
+    // form a table, render the heading separately, then the table.
+    let headingHtml = '';
+    if(lines.length >= 2 && /:$/.test(lines[0]) && !kvPattern.test(lines[0])){
+      headingHtml = `<p class="ep-subhead">${esc(lines[0])}</p>`;
+      lines = lines.slice(1);
+    }
+
+    // Pattern A: "Section Name — 26 questions, 20 minutes" → 3-column table
+    if(lines.length >= 2 && lines.every(l => dashPattern.test(l))){
+      const rows = lines.map(l => {
+        const m = l.match(dashPattern);
+        return `<tr><td>${esc(m[1])}</td><td>${esc(m[2])}</td><td>${esc(m[3])} min</td></tr>`;
+      }).join('');
+      return headingHtml + `<table class="ep-table"><thead><tr><th>Section</th><th>Questions</th><th>Duration</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    // Pattern B: "Label: Value" on every line → 2-column stat table
+    if(lines.length >= 2 && lines.every(l => kvPattern.test(l))){
+      const rows = lines.map(l => {
+        const m = l.match(kvPattern);
+        return `<tr><td class="ep-td-label">${esc(m[1])}</td><td>${esc(m[2])}</td></tr>`;
+      }).join('');
+      return headingHtml + `<table class="ep-table ep-table-kv"><tbody>${rows}</tbody></table>`;
+    }
+
+    // Pattern C: a short line ending in ':' acting as a mini heading, alone
+    if(lines.length === 1 && /:$/.test(lines[0])){
+      return `<p class="ep-subhead">${esc(lines[0])}</p>`;
+    }
+
+    // Fallback: plain paragraph, preserving line breaks within the block
+    return headingHtml + `<p>${lines.map(esc).join('<br>')}</p>`;
+  }).join('');
+}
+
 function renderSyllabusContent(){
   const area = document.getElementById('syllabusContentArea');
   const entries = syllabusCache.filter(e => e.exam_name === syllabusActiveExam);
@@ -1748,9 +1803,9 @@ function renderSyllabusContent(){
     html += processItems.map((e,i) => `
       <div class="syllabus-process-item">
         <div class="syllabus-process-num">${i+1}</div>
-        <div class="syllabus-card" style="flex:1; margin-bottom:0;">
+        <div class="syllabus-card" style="flex:1;">
           <h4>${esc(e.title)}</h4>
-          <p>${esc(e.content)}</p>
+          ${formatStructuredContent(e.content)}
         </div>
       </div>
     `).join('');
