@@ -1741,7 +1741,10 @@ function formatStructuredContent(content){
     let lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
     if(!lines.length) return '';
 
-    const dashPattern = /^(.+?)\s+[—-]\s+(\d+)\s+questions?,?\s*(\d+)\s+minutes?$/i;
+    // Full pattern: "Session 1 - Mathematical Abilities — 30 questions, 90 marks, 30 minutes"
+    const dashPattern3 = /^(?:[\w\s]+[-–]\s*)?(.+?)\s+[—-]\s+(\d+)\s+questions?,\s*(\d+)\s+marks?,\s*(\d+)\s+minutes?$/i;
+    // Shorter pattern: "Section Name — 26 questions, 20 minutes"
+    const dashPattern2 = /^(?:[\w\s]+[-–]\s*)?(.+?)\s+[—-]\s+(\d+)\s+questions?,?\s*(\d+)\s+minutes?$/i;
     const kvPattern = /^([^:]{2,40}):\s*(.+)$/;
 
     // If the first line is a short heading ("...:") and the REST of the lines
@@ -1752,16 +1755,25 @@ function formatStructuredContent(content){
       lines = lines.slice(1);
     }
 
-    // Pattern A: "Section Name — 26 questions, 20 minutes" → 3-column table
-    if(lines.length >= 2 && lines.every(l => dashPattern.test(l))){
+    // Pattern A: "Section — 30 questions, 90 marks, 30 minutes" → 4-column table
+    if(lines.length >= 2 && lines.every(l => dashPattern3.test(l))){
       const rows = lines.map(l => {
-        const m = l.match(dashPattern);
+        const m = l.match(dashPattern3);
+        return `<tr><td>${esc(m[1])}</td><td>${esc(m[2])}</td><td>${esc(m[3])}</td><td>${esc(m[4])} min</td></tr>`;
+      }).join('');
+      return headingHtml + `<table class="ep-table"><thead><tr><th>Section</th><th>Questions</th><th>Marks</th><th>Duration</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    // Pattern B: "Section Name — 26 questions, 20 minutes" → 3-column table
+    if(lines.length >= 2 && lines.every(l => dashPattern2.test(l))){
+      const rows = lines.map(l => {
+        const m = l.match(dashPattern2);
         return `<tr><td>${esc(m[1])}</td><td>${esc(m[2])}</td><td>${esc(m[3])} min</td></tr>`;
       }).join('');
       return headingHtml + `<table class="ep-table"><thead><tr><th>Section</th><th>Questions</th><th>Duration</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
 
-    // Pattern B: "Label: Value" on every line → 2-column stat table
+    // Pattern C: "Label: Value" on every line → 2-column stat table
     if(lines.length >= 2 && lines.every(l => kvPattern.test(l))){
       const rows = lines.map(l => {
         const m = l.match(kvPattern);
@@ -1770,7 +1782,7 @@ function formatStructuredContent(content){
       return headingHtml + `<table class="ep-table ep-table-kv"><tbody>${rows}</tbody></table>`;
     }
 
-    // Pattern C: a short line ending in ':' acting as a mini heading, alone
+    // Pattern D: a short line ending in ':' acting as a mini heading, alone
     if(lines.length === 1 && /:$/.test(lines[0])){
       return `<p class="ep-subhead">${esc(lines[0])}</p>`;
     }
