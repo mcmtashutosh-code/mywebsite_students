@@ -746,7 +746,10 @@ Dhyeodaya was built from this same experience — combining real classroom teach
   <!-- ================= SYLLABUS ================= -->
   <div class="view" id="view-syllabus">
     <div class="section">
-      <div class="section-head"><span class="section-title">Syllabus & Exam Process</span></div>
+      <div class="section-head">
+        <span class="section-title">Syllabus & Exam Process</span>
+        <button class="btn-stamp" id="syllabusDownloadBtn" onclick="downloadSyllabusPDF()" style="display:none; padding:8px 16px; font-size:13px;">📥 Download PDF</button>
+      </div>
       <div class="chiprow" id="syllabusExamTabs"></div>
       <div id="syllabusContentArea"><div class="empty-note">Loading…</div></div>
     </div>
@@ -1703,6 +1706,7 @@ let syllabusCache = null;
 let syllabusActiveExam = null;
 async function loadSyllabus(){
   const area = document.getElementById('syllabusContentArea');
+  const dlBtn = document.getElementById('syllabusDownloadBtn');
   if(!syllabusCache){
     const { data, error } = await sb.from('syllabus_entries').select('*').eq('is_active', true).order('exam_name').order('section_type').order('order_index');
     if(error || !data){ area.innerHTML = '<div class="empty-note">Error loading syllabus.</div>'; return; }
@@ -1710,6 +1714,7 @@ async function loadSyllabus(){
   }
   if(!syllabusCache.length){
     document.getElementById('syllabusExamTabs').innerHTML = '';
+    dlBtn.style.display = 'none';
     area.innerHTML = `<div class="empty-note" style="padding:50px 20px; text-align:center;">
       <div style="font-size:32px; margin-bottom:10px;">📋</div>
       <p style="font-size:15px; font-weight:600; color:var(--text); margin:0 0 6px;">Coming Soon</p>
@@ -1717,6 +1722,7 @@ async function loadSyllabus(){
     </div>`;
     return;
   }
+  dlBtn.style.display = 'inline-block';
   const examNames = [...new Set(syllabusCache.map(e=>e.exam_name))];
   if(!syllabusActiveExam || !examNames.includes(syllabusActiveExam)) syllabusActiveExam = examNames[0];
   renderSyllabusExamTabs(examNames);
@@ -1823,6 +1829,183 @@ function renderSyllabusContent(){
     `).join('');
   }
   area.innerHTML = html || '<div class="empty-note">Is exam ke liye abhi koi detail nahi hai.</div>';
+}
+
+/* ================= SYLLABUS PDF DOWNLOAD (login-gated) ================= */
+// pdf-lib's standard fonts only support WinAnsi-encodable characters —
+// this swaps out common "smart" typography characters for safe ASCII
+// equivalents so PDF generation never fails on content with special chars.
+function sanitizeForPDF(text){
+  return String(text)
+    .replace(/[\u2192\u21D2\u27A1]/g, '->')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2026/g, '...')
+    .replace(/[^\x00-\xFF]/g, ''); // strip anything else outside WinAnsi range
+}
+async function downloadSyllabusPDF(){
+  if(!currentUser){
+    toast('PDF download karne ke liye pehle login karein.');
+    openModal('authModal');
+    setAuthTab('login');
+    return;
+  }
+  if(!syllabusActiveExam || !syllabusCache || !syllabusCache.length){ return; }
+
+  const btn = document.getElementById('syllabusDownloadBtn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  try{
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    // Logo (used both as header mark and as a faint page watermark)
+    let logoImage = null;
+    try{
+      const logoBytes = await fetch('logo-icon.png').then(r=>r.arrayBuffer());
+      logoImage = await pdfDoc.embedPng(logoBytes);
+    }catch(e){ /* proceed without logo if it fails to load */ }
+
+    // Footer contact info — pull live so the PDF always reflects current details
+    const [{ data: emailRow }, { data: socialRows }] = await Promise.all([
+      sb.from('site_settings').select('value').eq('key','contact_email').maybeSingle(),
+      sb.from('social_links').select('platform_name, url').eq('is_active', true),
+    ]);
+    const contactEmail = (emailRow && emailRow.value) || 'dhyeodaya@gmail.com';
+    const ytLink = (socialRows || []).find(s => /youtube/i.test(s.platform_name))?.url || '';
+
+    const PAGE_W = 595.28, PAGE_H = 841.89; // A4
+    const margin = 48;
+    const contentWidth = PAGE_W - margin*2;
+    const footerZone = 66;
+    const seal = rgb(0.122, 0.478, 0.361);   // brand seal green
+    const gold = rgb(0.788, 0.635, 0.153);   // brand gold
+    const dim  = rgb(0.42, 0.46, 0.52);
+    const dark = rgb(0.11, 0.15, 0.2);
+
+    let page, y;
+
+    function drawFooter(p, pageNum){
+      if(logoImage){
+        p.drawImage(logoImage, { x:(PAGE_W-260)/2, y:(PAGE_H-260)/2, width:260, height:260, opacity:0.045 });
+      }
+      p.drawLine({ start:{x:margin,y:footerZone}, end:{x:PAGE_W-margin,y:footerZone}, thickness:0.75, color: rgb(0.82,0.84,0.88) });
+
+      if(logoImage) p.drawImage(logoImage, { x:margin, y:footerZone-34, width:26, height:26 });
+      p.drawText('Dhyeodaya', { x:margin+32, y:footerZone-18, size:9, font:fontBold, color:seal });
+      p.drawText(sanitizeForPDF('dhyeodaya.in  |  ' + contactEmail), { x:margin+32, y:footerZone-30, size:7, font, color:dim });
+      if(ytLink) p.drawText(sanitizeForPDF('YouTube: ' + ytLink), { x:margin+32, y:footerZone-40, size:7, font, color:dim });
+
+      // Digital signature / verification stamp
+      const sealCx = PAGE_W - margin - 40, sealCy = footerZone - 24, sealR = 24;
+      p.drawEllipse({ x:sealCx, y:sealCy, xScale:sealR, yScale:sealR, borderColor:seal, borderWidth:1.2 });
+      p.drawEllipse({ x:sealCx, y:sealCy, xScale:sealR-4, yScale:sealR-4, borderColor:seal, borderWidth:0.5 });
+      p.drawText('DHYEODAYA', { x:sealCx-20, y:sealCy+7, size:5.5, font:fontBold, color:seal });
+      p.drawText('DIGITALLY', { x:sealCx-16, y:sealCy, size:5, font, color:seal });
+      p.drawText('ISSUED', { x:sealCx-13, y:sealCy-6, size:5, font, color:seal });
+      p.drawText(new Date().toLocaleDateString('en-IN'), { x:sealCx-15, y:sealCy-13, size:4.5, font, color:dim });
+
+      p.drawText(`Page ${pageNum}`, { x:PAGE_W/2-15, y:16, size:7, font, color:dim });
+    }
+
+    function newPage(){
+      page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+      y = PAGE_H - margin;
+      drawFooter(page, pdfDoc.getPageCount());
+    }
+    function ensureSpace(need){
+      if(y - need < footerZone + 20) newPage();
+    }
+    function wrapText(text, maxWidth, f, size){
+      const words = text.split(' ');
+      const lines = []; let cur = '';
+      for(const w of words){
+        const test = cur ? cur+' '+w : w;
+        if(f.widthOfTextAtSize(test, size) > maxWidth && cur){ lines.push(cur); cur = w; }
+        else cur = test;
+      }
+      if(cur) lines.push(cur);
+      return lines;
+    }
+    function drawParagraph(text, x, size, f, color, lineGap){
+      const lines = wrapText(sanitizeForPDF(text), contentWidth - (x-margin), f, size);
+      lines.forEach(line => {
+        ensureSpace(lineGap);
+        page.drawText(line, { x, y, size, font:f, color });
+        y -= lineGap;
+      });
+    }
+
+    newPage();
+
+    // Header
+    if(logoImage) page.drawImage(logoImage, { x:margin, y:y-42, width:42, height:42 });
+    page.drawText('Dhyeodaya', { x:margin+52, y:y-16, size:19, font:fontBold, color:seal });
+    page.drawText('Preparation to Success', { x:margin+52, y:y-31, size:8, font, color:dim });
+    y -= 60;
+    ensureSpace(30);
+    page.drawText(sanitizeForPDF(syllabusActiveExam + ' - Syllabus & Exam Process'), { x:margin, y, size:14, font:fontBold, color:dark });
+    y -= 10;
+    page.drawLine({ start:{x:margin,y}, end:{x:PAGE_W-margin,y}, thickness:1, color:gold });
+    y -= 26;
+
+    const entries = syllabusCache.filter(e => e.exam_name === syllabusActiveExam);
+    const syllabusItems = entries.filter(e => e.section_type === 'syllabus');
+    const processItems = entries.filter(e => e.section_type === 'exam_process');
+
+    if(syllabusItems.length){
+      ensureSpace(24);
+      page.drawText('SYLLABUS', { x:margin, y, size:13, font:fontBold, color:gold });
+      y -= 20;
+      syllabusItems.forEach(item => {
+        ensureSpace(18);
+        page.drawText(sanitizeForPDF(item.title), { x:margin, y, size:10.5, font:fontBold, color:dark });
+        y -= 15;
+        item.content.split('\n').filter(Boolean).forEach(topic => {
+          drawParagraph('•  ' + topic.trim(), margin+10, 9, font, dim, 13);
+        });
+        y -= 8;
+      });
+    }
+
+    if(processItems.length){
+      ensureSpace(24);
+      page.drawText('EXAM PROCESS', { x:margin, y, size:13, font:fontBold, color:gold });
+      y -= 20;
+      processItems.forEach(item => {
+        ensureSpace(18);
+        page.drawText(sanitizeForPDF(item.title), { x:margin, y, size:10.5, font:fontBold, color:dark });
+        y -= 15;
+        item.content.split('\n').forEach(line => {
+          if(!line.trim()){ y -= 6; return; }
+          drawParagraph(line.trim(), margin+10, 9, font, dim, 13);
+        });
+        y -= 8;
+      });
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type:'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Dhyeodaya-${syllabusActiveExam.replace(/[^a-zA-Z0-9]+/g,'-')}-Syllabus.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('PDF download ho gaya.');
+  } catch(e){
+    console.error('PDF generation failed:', e);
+    toast('PDF banane me error aaya. Dobara try karein.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
 }
 
 async function loadGallery(){
