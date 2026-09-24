@@ -1917,21 +1917,21 @@ async function downloadSyllabusPDF(){
       p.drawText(`Page ${pageNum}`, { x:PAGE_W/2-15, y:16, size:7, font, color:dim });
     }
 
-    // Vertical divider between the two columns, drawn once the page's content is known —
-    // we draw it lazily right before moving on, using the tallest column's extent.
-    let dividerNeeded = false;
+    // Vertical divider between the two columns — drawn once at the end, using
+    // each page's own recorded content-start Y (so it never bleeds through
+    // the header on page 1, which has extra space above the columns).
+    let pageTopYs = [];
     function newPage(topY){
       page = pdfDoc.addPage([PAGE_W, PAGE_H]);
       colIdx = 0; colX = col0X;
       colTop = topY !== undefined ? topY : PAGE_H - margin;
       y = colTop;
-      dividerNeeded = false;
+      pageTopYs.push(colTop);
       drawFooter(page, pdfDoc.getPageCount());
     }
     function nextColumnOrPage(){
       if(colIdx === 0){
         colIdx = 1; colX = col1X; y = colTop;
-        dividerNeeded = true;
       } else {
         newPage();
       }
@@ -1958,8 +1958,8 @@ async function downloadSyllabusPDF(){
         y -= lineGap;
       });
     }
-    function sectionTitle(text){
-      ensureSpace(24);
+    function sectionTitle(text, extraReserve){
+      ensureSpace(24 + (extraReserve || 0));
       page.drawText(text, { x:colX, y, size:13, font:fontBold, color:gold });
       y -= 20;
     }
@@ -1977,6 +1977,7 @@ async function downloadSyllabusPDF(){
 
     function drawTableRows(headers, rows, colWidths, rowH, fontSize){
       const tableW = colWidths.reduce((a,b)=>a+b,0);
+      const lineH = fontSize + 3.5;
       if(headers){
         ensureSpace(rowH);
         page.drawRectangle({ x:colX, y:y-rowH+4, width:tableW, height:rowH, color:headBg });
@@ -1988,15 +1989,21 @@ async function downloadSyllabusPDF(){
         y -= rowH;
       }
       rows.forEach(row => {
-        ensureSpace(rowH);
+        // Wrap every cell first so we know how tall this row actually needs to be —
+        // long section names then wrap onto a 2nd line instead of being cut off.
+        const cellLineArrays = row.map((cell,i) => wrapText(sanitizeForPDF(cell), colWidths[i]-8, font, fontSize));
+        const maxLines = Math.max(1, ...cellLineArrays.map(a=>a.length));
+        const thisRowH = Math.max(rowH, maxLines*lineH + 7);
+        ensureSpace(thisRowH);
         let cx = colX;
-        row.forEach((cell,i) => {
-          const cellLines = wrapText(sanitizeForPDF(cell), colWidths[i]-6, font, fontSize);
-          page.drawText(cellLines[0] || '', { x:cx+4, y:y-rowH+8, size:fontSize, font, color:dim });
+        cellLineArrays.forEach((linesArr, i) => {
+          linesArr.forEach((ln, li) => {
+            page.drawText(ln, { x:cx+4, y:y-lineH*(li+1)+4, size:fontSize, font, color:dim });
+          });
           cx += colWidths[i];
         });
-        page.drawLine({ start:{x:colX,y:y-rowH+4}, end:{x:colX+tableW,y:y-rowH+4}, thickness:0.4, color:rule });
-        y -= rowH;
+        page.drawLine({ start:{x:colX,y:y-thisRowH+4}, end:{x:colX+tableW,y:y-thisRowH+4}, thickness:0.4, color:rule });
+        y -= thisRowH;
       });
       y -= 6;
     }
@@ -2042,13 +2049,13 @@ async function downloadSyllabusPDF(){
 
       const rowH = 15, fontSize = 8;
       if(lines.length >= 2 && lines.every(l => dashPattern3.test(l))){
-        const cw = [colWidth*0.42, colWidth*0.19, colWidth*0.17, colWidth*0.22];
+        const cw = [colWidth*0.48, colWidth*0.16, colWidth*0.15, colWidth*0.21];
         const rows = lines.map(l => { const m = l.match(dashPattern3); return [m[1], m[2], m[3], m[4]+' min']; });
         drawTableRows(['Section','Qs','Marks','Time'], rows, cw, rowH, fontSize);
         return;
       }
       if(lines.length >= 2 && lines.every(l => dashPattern2.test(l))){
-        const cw = [colWidth*0.55, colWidth*0.2, colWidth*0.25];
+        const cw = [colWidth*0.6, colWidth*0.18, colWidth*0.22];
         const rows = lines.map(l => { const m = l.match(dashPattern2); return [m[1], m[2], m[3]+' min']; });
         drawTableRows(['Section','Questions','Time'], rows, cw, rowH, fontSize);
         return;
@@ -2082,15 +2089,16 @@ async function downloadSyllabusPDF(){
     page.drawLine({ start:{x:margin,y}, end:{x:PAGE_W-margin,y}, thickness:1, color:gold });
     y -= 20;
     colTop = y; // both columns start below the header on page 1
+    pageTopYs[0] = colTop;
 
     const entries = syllabusCache.filter(e => e.exam_name === syllabusActiveExam);
     const syllabusItems = entries.filter(e => e.section_type === 'syllabus');
     const processItems = entries.filter(e => e.section_type === 'exam_process');
 
     if(syllabusItems.length){
-      sectionTitle('SYLLABUS');
+      sectionTitle('SYLLABUS', estimateItemReserve(syllabusItems[0]));
       syllabusItems.forEach(item => {
-        itemTitle(item.title);
+        itemTitle(item.title, estimateItemReserve(item));
         item.content.split('\n').filter(Boolean).forEach(topic => {
           drawParagraph('•  ' + topic.trim(), 6, 8.5, font, dim, 12.5);
         });
@@ -2100,7 +2108,7 @@ async function downloadSyllabusPDF(){
 
     if(processItems.length){
       y -= 6;
-      sectionTitle('EXAM PROCESS');
+      sectionTitle('EXAM PROCESS', estimateItemReserve(processItems[0]));
       processItems.forEach(item => {
         itemTitle(item.title, estimateItemReserve(item));
         item.content.split(/\n\s*\n/).forEach(block => renderStructuredBlock(block));
@@ -2108,11 +2116,13 @@ async function downloadSyllabusPDF(){
       });
     }
 
-    // Draw the vertical rule between columns on every page that used two columns
+    // Draw the vertical rule between columns — stops right below each page's
+    // own header/margin (using pageTopYs) so it never crosses the title.
     const pages = pdfDoc.getPages();
     pages.forEach((p, i) => {
       const midX = col0X + colWidth + colGap/2;
-      p.drawLine({ start:{x:midX, y:footerZone+10}, end:{x:midX, y:PAGE_H-margin+6}, thickness:0.5, color:rule });
+      const topBound = (pageTopYs[i] !== undefined ? pageTopYs[i] : PAGE_H - margin) + 4;
+      p.drawLine({ start:{x:midX, y:footerZone+10}, end:{x:midX, y:topBound}, thickness:0.5, color:rule });
     });
 
     const pdfBytes = await pdfDoc.save();
