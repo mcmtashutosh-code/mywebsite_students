@@ -1963,8 +1963,8 @@ async function downloadSyllabusPDF(){
       page.drawText(text, { x:colX, y, size:13, font:fontBold, color:gold });
       y -= 20;
     }
-    function itemTitle(text){
-      ensureSpace(18);
+    function itemTitle(text, reserve){
+      ensureSpace(reserve || 18);
       page.drawText(sanitizeForPDF(text), { x:colX, y, size:10.5, font:fontBold, color:dark });
       y -= 15;
     }
@@ -1999,6 +1999,30 @@ async function downloadSyllabusPDF(){
         y -= rowH;
       });
       y -= 6;
+    }
+
+    // Estimates how much vertical space an item's title + its first meaningful
+    // chunk of content will need, so we can decide BEFORE drawing the title
+    // whether to start it here or jump to the next column/page — this is what
+    // prevents a title/table-header being stranded alone at a column's bottom
+    // with its data rows pushed to the next column.
+    function estimateItemReserve(item){
+      const firstBlock = item.content.split(/\n\s*\n/)[0] || '';
+      let lines = firstBlock.split('\n').map(l=>l.trim()).filter(Boolean);
+      let reserve = 15; // title
+      if(!lines.length) return reserve;
+      let heading = null;
+      if(lines.length >= 2 && /:$/.test(lines[0]) && !kvPattern.test(lines[0])){
+        heading = lines[0]; lines = lines.slice(1); reserve += 13;
+      }
+      const isTable = lines.length >= 2 && (lines.every(l=>dashPattern3.test(l)) || lines.every(l=>dashPattern2.test(l)) || lines.every(l=>kvPattern.test(l)));
+      if(isTable){
+        reserve += 15; // header row
+        reserve += Math.min(lines.length, 3) * 15; // first up-to-3 data rows
+      } else {
+        reserve += 25; // a couple of wrapped paragraph lines
+      }
+      return reserve;
     }
 
     function renderStructuredBlock(block){
@@ -2078,7 +2102,7 @@ async function downloadSyllabusPDF(){
       y -= 6;
       sectionTitle('EXAM PROCESS');
       processItems.forEach(item => {
-        itemTitle(item.title);
+        itemTitle(item.title, estimateItemReserve(item));
         item.content.split(/\n\s*\n/).forEach(block => renderStructuredBlock(block));
         y -= 6;
       });
