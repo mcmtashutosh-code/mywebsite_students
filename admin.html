@@ -2521,9 +2521,9 @@ function clearCustomFields(){
 }
 async function uploadJobPdf(file, prefix){
   const path = `${prefix}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-  const { error } = await sb.storage.from('job-docs').upload(path, file, { upsert:false });
+  const { error } = await sb.storage.from('job_docs').upload(path, file, { upsert:false });
   if(error) throw new Error(error.message);
-  const { data } = sb.storage.from('job-docs').getPublicUrl(path);
+  const { data } = sb.storage.from('job_docs').getPublicUrl(path);
   return data.publicUrl;
 }
 
