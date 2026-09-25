@@ -2858,13 +2858,13 @@ async function loadJobs(){
 function jobCardHtml(j){
   const hasExtra = j.important_dates || j.eligibility || j.age_limit || j.total_posts || j.fee_general || j.fee_sc_st || j.fee_ph || (j.extra_fields && j.extra_fields.length);
   const links = [
-    j.apply_link ? {label:'Apply Online', url:j.apply_link, primary:true} : null,
-    j.link_notification ? {label:'Notification', url:j.link_notification} : null,
-    j.link_syllabus ? {label:'Syllabus', url:j.link_syllabus} : null,
-    j.link_admit_card ? {label:'Admit Card', url:j.link_admit_card} : null,
-    j.link_result ? {label:'Result', url:j.link_result} : null,
-    j.link_official_website ? {label:'Official Website', url:j.link_official_website} : null,
-  ].filter(Boolean);
+    {label:'Apply Online', url:j.apply_link, primary:true},
+    {label:'Notification', url:j.link_notification},
+    {label:'Syllabus', url:j.link_syllabus},
+    {label:'Admit Card', url:j.link_admit_card},
+    {label:'Result', url:j.link_result},
+    {label:'Official Website', url:j.link_official_website},
+  ];
 
   const detailRows = [];
   if(j.important_dates) detailRows.push(...j.important_dates.split('\n').filter(Boolean).map(line=>{
@@ -2893,7 +2893,10 @@ function jobCardHtml(j){
         ${hasExtra ? `<button class="btn-sm btn-ghost-sm" onclick="toggleJobDetails('${uid}')">Details ▾</button>` : ''}
       </div>
       ${hasExtra ? `<div class="job-details" id="${uid}" style="display:none;">${detailRows.join('')}</div>` : ''}
-      ${links.length ? `<div class="job-links">${links.map(l=>`<button class="btn-sm ${l.primary?'btn-primary-sm':'btn-ghost-sm'}" onclick="window.open('${esc(l.url)}','_blank')">${l.label}</button>`).join('')}</div>` : ''}
+      <div class="job-links">${links.map(l => l.url
+        ? `<button class="btn-sm ${l.primary?'btn-primary-sm':'btn-ghost-sm'}" onclick="window.open('${esc(l.url)}','_blank')">${l.label}</button>`
+        : `<button class="btn-sm btn-ghost-sm" style="opacity:.45; cursor:not-allowed;" onclick="toast('${l.label} link abhi available nahi hai. Baad me check karein.')">${l.label}</button>`
+      ).join('')}</div>
     </div>
   `;
 }
